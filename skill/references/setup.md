@@ -1,0 +1,80 @@
+# 安装与登录
+
+## 装
+
+```bash
+x-cli --version
+```
+
+有版本号就直接用。没有的话：
+
+```bash
+cd <repo>
+pnpm install --ignore-scripts
+pnpm build
+```
+
+需要 Node 22.19+ 和 Google Chrome。`x-cli` 通过 DevTools 协议驱动 Chrome，不打包浏览器。
+
+## 登录
+
+```bash
+x-cli auth status
+```
+
+| 返回 | 怎么办 |
+| --- | --- |
+| `signed_in: true` | 直接用，`account.handle` 是当前账号 |
+| `login_required: true` | 跑 `x-cli auth login`，让主人在窗口里登录 |
+| `verification_required: true` | 要人验证，跑不了。让主人处理完再查 |
+
+登录态存在专用 profile（`~/.x-cli/chrome`），一次登录长期有效，不落在仓库里。**工具从不输入密码。**
+
+## Google 登录会被拒
+
+页面写「此浏览器或应用可能不安全」。那是调试端口被识破，不是账号问题——X 用的是 Google 的 OAuth，Google 拒绝在带调试端口的浏览器里登录。
+
+```bash
+x-cli auth login --manual
+```
+
+它做四件事：关掉自动化浏览器 → 用同一个 profile 开一个**不带调试端口**的窗口 → 等主人关窗口（靠 profile 锁，不是靠进程退出）→ 重新起自动化浏览器并读回登录态。
+
+Google 账号的第一次登录必须走这条。
+
+## 代理
+
+X 在某些网络下不通。设置一次：
+
+```bash
+x-cli browser configure --proxy http://127.0.0.1:7890
+```
+
+## 浏览器
+
+```bash
+x-cli browser start              # 起专用 Chrome
+x-cli browser start --headless false
+x-cli browser status
+x-cli browser stop
+x-cli clean                      # 清缓存，保留登录态
+```
+
+**headless 更容易被 X 要求验证。** 一个 headless 浏览器报 `login_required` 可能只是需要 `--headless false`。
+
+## 状态目录
+
+`~/.x-cli/` 里放 `browser.json`、`chrome/`、`config.json`、`receipts.json`、`history.jsonl`、`seen.json`、`operation.lock`。
+
+`--state-dir <path>` 或 `X_CLI_STATE_DIR` 可以换地方。**永远不要把状态目录放进仓库。**
+
+## 卡住的时候
+
+| 现象 | 原因 | 怎么办 |
+| --- | --- | --- |
+| `busy` / `Workspace lock ownership was lost` | 另一个命令占着滚动锁 | 等一会儿重试 |
+| 命令很久没动静 | 浏览器窗口被别的操作挡住，或页面在等人验证 | `x-cli status` 看页面是什么 |
+| `selector_changed` | X 改了页面 | 报告卡在哪，不要自己反复重试 |
+| 页面空白但报成功 | 可能是登录遮罩 | `x-cli auth status` 先确认 |
+
+**别为了让命令成功去放宽检查。** 真的过不去，告诉主人卡在哪。

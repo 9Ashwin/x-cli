@@ -4,25 +4,37 @@
     {
       "id": 1,
       "prompt": "去 X 上找几条关于 AI agent 的中文热帖，挑一条你觉得值得回的，写一条回复。别发，先给我看。",
-      "expected_output": "Uses search hot with lang:zh and min-likes, reads the section with comment section, drafts a reply, runs comment check, does not post.",
+      "expected_output": "Uses auto suggest or a filtered search, reads the section before drafting, checks the draft, explains why that post, does not send.",
       "files": []
     },
     {
       "id": 2,
       "prompt": "我昨天在 X 上给一条推发了回复，回来的时候说 delivery_uncertain。现在怎么办？",
-      "expected_output": "Does not resend. Checks auth status, reads the conversation, checks the receipt, reports what was found.",
+      "expected_output": "Does not resend. Explains what uncertain means, checks auth, says which post is missing rather than guessing, gives the receipt and conversation steps, says a retry needs a new request id.",
       "files": []
     },
     {
       "id": 3,
       "prompt": "帮我看下我 X 上收藏了哪些东西，把其中跟 agent 有关的挑出来，顺便我看看有没有能取消的。",
-      "expected_output": "Uses saved bookmarks, filters for agent-related posts, does not auto-unbookmark.",
+      "expected_output": "Uses saved bookmarks, filters for agent-related posts, reports the bookmarked state, explains how to unbookmark without doing it.",
       "files": []
     },
     {
       "id": 4,
       "prompt": "现在 X 上什么最火？给我看看热榜，然后挑两个话题找点帖子。",
-      "expected_output": "Uses trend read (topics, not posts), then search keyword with those topics. Does not confuse the two.",
+      "expected_output": "Uses trend read, recognises entries are topics not posts, uses trend posts --index or search with the topic to get posts, reports at least two topics with posts.",
+      "files": []
+    },
+    {
+      "id": 5,
+      "prompt": "我给一条推想好了回复，帮我看看这么写行不行：「确实如此，这套课最有价值的就是把工程链路讲清楚了」。给我判断和理由。",
+      "expected_output": "Runs comment check against the section. Reads verdict and sameness. If template or narrowing, says to change the angle rather than reword. Does not post.",
+      "files": []
+    },
+    {
+      "id": 6,
+      "prompt": "我想给 @somebody 发条新帖说一下我们上线了。发之前你帮我把该确认的都确认了。",
+      "expected_output": "Uses post create with a request id and dry-run first. Does not confuse a new post with a reply. Does not send without the user approving the text.",
       "files": []
     }
   ]

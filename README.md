@@ -1,234 +1,172 @@
+<div align="right">
+  <span>[<a href="./README.en.md">English</a>]</span>
+  <span>[<b>简体中文</b>]</span>
+</div>
+
+<div align="center">
+
 # x-cli
 
-Operate X from the command line. Read a conversation, post a reply, and keep a
-receipt of every write. Built for agents: one JSON envelope per command, stable
-ids, and a refusal instead of a guess whenever the page disagrees.
+**让你的 AI Agent 用 X（Twitter）。**
 
-## What it does today
+一个本地命令行工具，连接 Agent、X 页面和每一次写入的收据。
 
-**Finding something to answer**
+<img src="https://img.shields.io/badge/node-%E2%89%A522.19-339933?logo=node.js&logoColor=white" alt="Node.js 22.19+" />
+<img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License" />
 
-| Command | What it does |
-| --- | --- |
-| `x-cli auto suggest` | Ranks posts worth replying to, with each one's section already measured |
-| `x-cli feed read` | Your home timeline, as the page renders it |
-| `x-cli trend read` | X's Explore board: Trending, News, Sports, Entertainment |
-| `x-cli trend posts` | The posts under one board entry |
-| `x-cli search keyword` | A keyword, newest first |
-| `x-cli search hot` | A keyword on X's Top tab, with full engagement counts |
-| `x-cli saved bookmarks` / `saved likes` | What this account already kept |
+[快速开始](#快速开始) · [功能一览](#功能一览) · [给-agent-接入](#给-agent-接入) · [开发](#开发)
 
-**Reading a conversation**
+</div>
 
-| Command | What it does |
-| --- | --- |
-| `x-cli comment list` | The replies the page has rendered under a status |
-| `x-cli comment get` | One reply plus the status it answers |
-| `x-cli post get` | One status, without its replies |
-| `x-cli comment section` | What this section's replies are like, what drew a reaction, and what they are about |
-| `x-cli comment check` | Measure a draft against the section, and against what you already wrote |
+## 这是什么
 
-**Writing**
+`x-cli` 的命令叫 `x-cli`。把它交给能执行 shell 的 AI Agent，就能读时间线、看热榜、搜关键词、读一条推下面的对话，并回复、发帖、点赞、关注、删帖。
 
-| Command | What it does |
-| --- | --- |
-| `x-cli comment post` | Reply to a status |
-| `x-cli comment reply` | Reply to one reply in a conversation |
-| `x-cli post create` | Publish a new post |
-| `x-cli comment delete` / `delete-many` | Remove your own replies, with ownership proved from the author |
-| `x-cli post like` / `bookmark` / `repost` | Set a post's state for this account |
-| `x-cli user follow` | Follow or unfollow an account |
+**Agent 负责理解和判断，`x-cli` 提供操作和证据。** 项目不内建模型，也不运行定时任务；它用你已有的 Agent 和本机 Chrome。
 
-**Pieces around the edges**
+和同类工具最大的不同是**判断留在调用方**。工具不会自己挑一条帖然后发出去——如果它挑了，「为什么选这条」就没有答案；如果它写了，那也不是你的话。所以读和写永远是两个动作。
 
-| Command | What it does |
-| --- | --- |
-| `x-cli auth login` | Opens X's sign-in in the dedicated Chrome profile |
-| `x-cli auth login --manual` | Same, with the debugging port off — required for Google sign-in |
-| `x-cli auth status` | Whether the tab is signed in, and as whom |
-| `x-cli status` | Page kind, URL, account and the open status |
-| `x-cli notice read` | Who liked, replied to, mentioned or followed you |
-| `x-cli receipt get` | The durable record of one write |
-| `x-cli history list` | Every confirmed operation, locally |
-| `x-cli browser start/stop/status/configure` | The dedicated Chrome |
-| `x-cli clean` | Remove the profile's caches, keep the sign-in |
+## 快速开始
 
-## Install
+准备好 **Node.js 22.19+、Chrome，以及一个能执行 shell 的 Agent**。
+
+### 1. 安装
 
 ```bash
+git clone <repo> && cd x-cli
 pnpm install --ignore-scripts
 pnpm build
-node dist/cli.js --help
+node dist/cli.js --version
 ```
 
-Requires Node 22.19+ and Google Chrome. `x-cli` talks to Chrome over the DevTools
-protocol; it does not bundle a browser.
+`x-cli` 通过 DevTools 协议驱动 Chrome，不打包浏览器。
 
-## First run
+### 2. 登录
 
 ```bash
-x-cli browser start --headless false
 x-cli auth login
 ```
 
-Sign in by hand in the window that opens. The tool never types credentials. The
-profile lives in `~/.x-cli/chrome`, so the session survives restarts.
+在打开的专用 Chrome 窗口里自己登录。**工具从不输入密码**，登录态存在 `~/.x-cli/chrome`，一次登录长期有效。
 
-### Google sign-in is refused in an automation browser
-
-Google answers *"This browser or app may not be secure"* for a browser started
-with a debugging port, which is exactly how the tool starts Chrome. Use:
+用 Google 账号登录会被拒（页面写「此浏览器或应用可能不安全」）——那是调试端口被识破，不是账号问题。用：
 
 ```bash
 x-cli auth login --manual
 ```
 
-That closes the automation browser, opens the same profile **without** the
-debugging port, waits until you close it, and then reads the session back. Every
-later command uses the CDP browser on the same profile.
+它关掉自动化浏览器，用同一个 profile 开一个**不带调试端口**的窗口，等你关窗口后把登录态读回来。
 
-### Behind a proxy
+### 3. 装 skill
 
-X is unreachable on some networks without one. Set it once:
+把 `skill/` 复制到你 Agent 的技能目录，或者直接把 `skill/SKILL.md` 指给它。
 
 ```bash
-x-cli browser configure --proxy http://127.0.0.1:7890
+cp -r skill ~/.claude/skills/x
 ```
 
-## Reading a conversation
+### 4. 开始用
+
+把这句话发给你的 Agent：
+
+> 用 x-cli 找几条关于 AI agent 的帖子，挑一条值得回的，写好先给我看，别发。
+
+## 功能一览
+
+| 能力 | 常用入口 |
+| --- | --- |
+| 找值得回的帖子（排序 + 量区） | `x-cli auto suggest` |
+| 读时间线、热榜、关键词搜索 | `x-cli feed read` · `x-cli trend read` · `x-cli search hot` |
+| 从热榜走到它下面的帖子 | `x-cli trend posts --index <n>` |
+| 读一条推下面的对话 | `x-cli comment list` · `x-cli post get` |
+| 量这个区、检查自己的草稿 | `x-cli comment section` · `x-cli comment check` |
+| 回复、回复某条回复、发新帖 | `x-cli comment post` · `x-cli comment reply` · `x-cli post create` |
+| 点赞、收藏、转发、关注 | `x-cli post like` · `x-cli post bookmark` · `x-cli post repost` · `x-cli user follow` |
+| 删自己的帖子（含批量） | `x-cli comment delete` · `x-cli comment delete-many` |
+| 读通知、读收藏和喜欢 | `x-cli notice read` · `x-cli saved bookmarks` · `x-cli saved likes` |
+| 查收据、查本地历史 | `x-cli receipt get` · `x-cli history list` |
+
+完整命令、参数和副作用类型见 `x-cli schema`。
+
+## 一条回复的完整流程
 
 ```bash
-x-cli comment list --status https://x.com/handle/status/1234567890 --limit 30 --scrolls 3
+x-cli auto suggest --goal reply --limit 20
 ```
 
-```json
-{
-  "status_id": "1234567890",
-  "root": { "id": "1234567890", "handle": "handle", "text": "…", "root": true },
-  "items": [
-    { "id": "…", "handle": "…", "text": "…", "reply_to": { "handle": "…", "id": null }, "depth": 0 }
-  ],
-  "scope": "loaded_dom",
-  "complete": false
-}
-```
-
-`scope` and `complete` are always `loaded_dom` and `false`. X loads replies as the
-conversation scrolls, so `items` is a window, not the thread. An empty list means
-nothing loaded, not that nobody replied.
-
-## Reading a timeline or a search
+它从时间线 / 热榜词 / 关键词收集候选，按「每条回复还能分到多少注意力」排序，并打开前 8 条各自的会话把区量出来。每条带 `section`、`signals`（排序用的数）、`why`（为什么排在这）、`angles`（帖子里已有的切入点）。
 
 ```bash
-x-cli feed read --limit 20 --scrolls 2
-x-cli search keyword --query "AI agent" --limit 20
-x-cli post get --status 1234567890
+x-cli comment check --status <id> --draft "…"
 ```
 
-All three return the same shape, so `items[].id` goes straight into
-`comment post --status`. Promoted posts are excluded and counted in `limits`.
-
-## Posting a reply
+拿到草稿的判定：`has-a-point` / `flat` / `generic-praise`，以及 `sameness`（跟你以前发过的比，是不是在变成同一个模子）。
 
 ```bash
-x-cli comment post --status 1234567890 --text "…" --request-id reply-1234567890-01
-x-cli comment reply --status 1234567890 --comment-id 0987654321 --text "…" --request-id reply-2
+x-cli comment post --status <id> --text "…" --request-id reply-<id>-01
 ```
 
-A send:
+**`--request-id` 必须给，每次新的发送用新的 id。**
 
-- saves a receipt **before** the post button can be pressed;
-- proves the reply target from the composer's own quoted tweet, because X's reply
-  dialog and its new-post dialog are the same component — without the quote the
-  press would publish to everyone;
-- re-checks the text and the target at press time, inside the page;
-- reports `confirmed` only from a success toast, a new row, or the dialog closing;
-- otherwise fails with `delivery_uncertain` and **is never resent automatically**.
+## 操作与证据边界
 
-Reusing a request id replays the receipt. Reusing it with different text is an
-`idempotency_conflict`.
+- **写之前先留收据。** 已确认的 request ID 重放时返回原收据；遇到 `delivery_uncertain` 先核对，**不自动重发**。
+- **用稳定 ID 定位。** 帖子、账号以 CLI 返回的数字 ID 为准；昵称和 handle 都会改。
+- **读到的是窗口。** 所有读取都标 `scope: "loaded_dom"`、`complete: false`。`items` 为空只说明没加载到，不说明没有。
+- **判断不归工具。** 没有自动选帖发送的命令，没有生成正文，没有拟人节奏或随机间隔。
+- **登录和数据留在本机。** `~/.x-cli` 含登录态和操作历史，不应提交或共享。自动化可能触发验证、限流或账号处罚；验证需要真人完成，项目不提供绕过手段。
 
-### A run of replies stops and asks
+X 的自动化规则禁止批量、无差别地回复、点赞和关注。工具没有这类命令，也不该手写循环绕过。用这个账号做自动化时，账号简介里应说明这一点和运营者——这是 X 开发者指南的要求。
 
-The tool counts its own confirmed sends in the last 30 minutes. At eight, a send
-returns `needs_confirmation` with the count and sends nothing:
+## 给 Agent 接入
 
-```json
-{ "sent": false, "needs_confirmation": true,
-  "pace": { "recent": 8, "window_minutes": 30, "threshold": 8, "over": true },
-  "next": "If this is intended, run the same command with --confirm. Nothing has been sent." }
-```
+[skill/SKILL.md](skill/SKILL.md) 教 Agent 使用工具，场景细节在 [skill/references/](skill/references/)：
 
-It does not block: `--confirm` carries on. The count comes from this machine's
-own log, so it is not X's limit and does not claim to be — it is a pause at the
-point where a run of replies starts to look like one.
+| 文件 | 讲什么 |
+| --- | --- |
+| `setup.md` | 安装、登录、代理、卡住了怎么办 |
+| `finding.md` | 找帖子、挑值得回的、读互动数 |
+| `writing.md` | 量一个区、写回复、自测、`delivery_uncertain` |
+| `account.md` | 发新帖、关注、点赞、删帖、通知、收藏 |
+| `platform-facts.md` | X 页面上摸到的事实 |
 
-## Safety rules
-
-- A `delivery_uncertain` write may be out. Check the page and the receipt; a
-  second request id is a second reply.
-- Identity is the numeric status id. Handles are renameable and display names are
-  decoration.
-- The tool never types a password, and never stores cookies outside the Chrome
-  profile.
-- `--dry-run` validates and plans without starting Chrome.
-
-## Development
+日常调用顺序：
 
 ```bash
-pnpm check          # biome + tsc
-pnpm test           # pure tests
-pnpm build          # bundle the page adapter, compile src/
-pnpm test:browser   # isolated Chrome, fixture page, no credentials
+x-cli auth status                 # 现在登录的是谁
+x-cli auto suggest --goal reply   # 有什么值得回
+x-cli comment section --status …  # 这个区长什么样
+x-cli comment check --status … --draft "…"
+x-cli comment post --status … --text "…" --request-id …
 ```
 
-Read [AGENTS.md](AGENTS.md) first, then
-[docs/architecture.md](docs/architecture.md),
-[docs/typescript.md](docs/typescript.md) and
-[docs/contracts.md](docs/contracts.md).
+`x-cli schema` 提供命令、参数和副作用类型。一次只运行一个操作——两个命令会让第二个等第一个放锁，而不是同时驱动同一个标签页。
 
-## Agent skill
+成功输出 `{ok:true,data}` 到 stdout；失败输出 `{ok:false,error}` 到 stderr，并返回非零退出码。写入使用唯一的 `--request-id`；`--dry-run` 只验证参数和计划，不连接 Chrome、不填表、不发送。完整契约见 [docs/contracts.md](docs/contracts.md)。
 
-`skill/SKILL.md` teaches an agent to use the CLI. Copy it into your agent's skill
-directory, or point the agent at this file.
+## 没有的
 
-## Limits, stated plainly
+- **私信** —— X 的私信在四位数字密码屏后面，那个密码只有账号主人知道，工具不输入凭据，所以不通
+- Lists、Space、书签分组
+- 从通知跳到具体帖子（通知行上没有帖子 id）
+- 自动选帖后直接发送、生成正文、拟人节奏
 
-- X changes its markup. Every read is bounded to what the page rendered, and a
-  changed control is reported as `selector_changed` rather than retried blindly.
-- No direct messages: X gates them behind a four-digit passcode screen this tool does not attempt. No Lists.
-- Tested against a signed-in account on x.com with English and Chinese UI. Other
-  locales and account tiers may need selector work.
+## 开发
 
-## Reading and replying are separate
+需要 Node.js 22.19+、pnpm 和本机 Chrome。
 
-`auto suggest`, `feed read` and `search keyword` return candidates. `comment post` sends one
-reply, to one id you name. There is no command that joins the two.
+```bash
+pnpm install --ignore-scripts
+pnpm build
+pnpm check           # Biome + TypeScript
+pnpm test            # 纯逻辑测试
+pnpm test:browser    # 临时 Chrome profile + fixture 页面，不用凭据
+```
 
-That gap is the point. Choosing which post to answer and writing what to say are
-judgement calls, and judgement in a CLI is judgement nobody can ask about. If the
-tool picked the target, "why this post" would have no answer; if it wrote the
-text, "what does it mean" would have none either.
+浏览器测试不使用账号凭据，通过测试不等于通过真实 X 页面验证。X 会改页面结构；改变了的控件报 `selector_changed`，不会盲目重试。
 
-Two measurements aim at the same failure from different sides. `comment section`
-labels every reply `about_work`, `about_self`, `asking` or `spam`, because
-quoting "agreed" under a reply that is actually about the writer's own situation
-reads as nobody having read the section. `comment check` compares a draft with
-the confirmed replies in this machine's own log and reports `sameness` —
-`varied`, `narrowing` or `template` — because a draft can pass every per-draft
-check and still be the fifth time the same opening was used. `template` is not a
-prompt to change a synonym; it is a prompt to change the angle.
+开发规则见 [AGENTS.md](AGENTS.md)，架构见 [docs/architecture.md](docs/architecture.md)，类型约定见 [docs/typescript.md](docs/typescript.md)，公开契约见 [docs/contracts.md](docs/contracts.md)。
 
-`auto suggest` narrows the first half without closing it: it ranks candidates and
-reports the numbers it used (`signals`), the reason each is where it is (`why`),
-and what is already in the post (`angles`). It does not write a reply and does
-not send one. `angles` are pointers at the post, not drafts, and pasting one in
-is the generic praise `comment check` is built to catch.
+## 许可
 
-So the tool provides no generated comment text and no randomised or
-"human-like" spacing between sends. Spacing is something a calling script can do
-if it wants; making it look human is not a feature this repository builds.
-
-Reading commands and sending commands are separate here for the same reason. A
-tool that did both in one step would be choosing on the caller's behalf, and the
-caller would have no way to see that it had.
+[MIT](LICENSE)
