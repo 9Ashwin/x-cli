@@ -30,6 +30,7 @@ export const GROUPS: Record<string, string> = {
 	user: "Follow and unfollow an account",
 	feed: "Read your own recommended timeline",
 	trend: "Read what X is trending on, with nothing searched for",
+	auto: "Rank posts worth replying to, with each section already read",
 	search: "Search a keyword and read the matching posts",
 	post: "Read one post, and like, bookmark or repost it",
 	comment: "Read a conversation and post a reply",
