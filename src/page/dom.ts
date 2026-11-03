@@ -78,7 +78,7 @@ export function point(element: HTMLElement, token: string): Point {
 	// control was reported armed anyway.
 	if (!inView) element.scrollIntoView({ block: "center", inline: "nearest", behavior: "instant" });
 	const disabled = !!element.closest(':disabled,[aria-disabled="true"]');
-	let last = { width: 0, height: 0, covered: false };
+	let last = { width: 0, height: 0, covered: false, by: null as string | null };
 	let previousTop = Number.NaN;
 	for (let attempt = 0; attempt < 25; attempt++) {
 		// Measured fresh on every attempt, so a layout that settled after the first
@@ -94,12 +94,16 @@ export function point(element: HTMLElement, token: string): Point {
 		// contain the hit alone refused a like button whose visible content is a
 		// span the button is drawn around, not inside.
 		const aimed = sized && !!hit && (hit === element || element.contains(hit) || hit.contains(element));
+		// What is actually at that point when the control is not. "Something is
+		// covering it" left the caller to guess; in practice it is almost always an
+		// open dialog, and the answer to that is to close the dialog, not to retry.
+		const blocker = aimed || !hit ? null : describeBlocker(hit as Element);
 		// Aiming at a control that is still moving is not aiming at it: the press
 		// is issued later than this measurement. The position must hold for one
 		// frame before the control counts as armed.
 		const still = rect.top === previousTop;
 		previousTop = rect.top;
-		last = { width: Math.round(rect.width), height: Math.round(rect.height), covered: sized && !aimed };
+		last = { width: Math.round(rect.width), height: Math.round(rect.height), covered: sized && !aimed, by: blocker };
 		if (aimed && still && !disabled) {
 			// A unique value per call. Sharing one token across two controls made
 			// `[data-x-cli-control="..."]` match both once the second was marked, and
@@ -122,8 +126,23 @@ export function point(element: HTMLElement, token: string): Point {
 		? "it is disabled"
 		: last.width === 0 || last.height === 0
 			? `it has no size (${last.width}x${last.height}); the page had two seconds to paint it`
-			: "something is covering it";
-	fail("selector_changed", `Target control is not clickable because ${why}`);
+			: `${last.by ?? "something"} is covering it`;
+	// The two covering cases have different answers, so the hint says which. An
+	// open dialog is closed by the owner; anything else is a page that has not
+	// settled.
+	const hint = last.by === "an open dialog" ? "Close the dialog on the page, then run the command again." : undefined;
+	fail("selector_changed", `Target control is not clickable because ${why}`, hint);
+}
+
+// A phrase for the element sitting on top of the target. Named by what the
+// caller would recognise on screen rather than by markup.
+function describeBlocker(element: Element): string {
+	if (element.getAttribute("data-testid") === "mask") return "an open dialog";
+	const dialog = element.closest('[role="dialog"]');
+	if (dialog) return "an open dialog";
+	const label = clean(element.getAttribute("aria-label") ?? element.textContent).slice(0, 40);
+	const name = element.getAttribute("data-testid") ?? element.tagName.toLowerCase();
+	return label ? `${name} ("${label}")` : name;
 }
 
 function sleepSync(ms: number): void {

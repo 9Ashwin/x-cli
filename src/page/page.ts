@@ -93,23 +93,45 @@ export function verificationRequired(): boolean {
 
 // The signed-in account.
 //
-// The account switcher button carries no text at this width — its label is an
-// avatar, so reading its textContent returned "" and every command reported an
-// unknown account while the profile link sat in the same nav. The avatar's own
-// test id names the handle (`UserAvatar-Container-<handle>`), and the profile
-// tab's href is the same handle. Reported as null rather than guessed when
-// neither is readable.
+// The order matters, and the first version had it backwards. It read the first
+// `UserAvatar-Container-<handle>` on the page, but that is whatever avatar X
+// rendered first — on a status page with a reply composer open it is the author
+// of a tweet in the conversation, not the signed-in account. One run reported
+// `0xsmerkzz` as the account while signed in as somebody else, which is worse
+// than reporting nothing: `mine` on every row and the ownership check before a
+// delete are both built on this handle.
+//
+// So the account is read from the one control whose link is the account's own
+// profile: the nav's profile tab, or the account switcher. The avatar is a last
+// resort, and only from inside the switcher, where it really is the owner.
+// Reported as null rather than guessed when none of them is readable.
 export function account(): { handle: string | null; name: string | null } | null {
-	const avatar = document.querySelector<HTMLElement>('[data-testid^="UserAvatar-Container-"]');
-	if (avatar)
-		return { handle: avatar.getAttribute("data-testid")?.replace("UserAvatar-Container-", "") ?? null, name: null };
 	const profile = document.querySelector<HTMLAnchorElement>('[data-testid="AppTabBar_Profile_Link"]');
-	if (profile?.getAttribute("href"))
-		return { handle: profile.getAttribute("href")?.replace("/", "") ?? null, name: null };
+	const fromProfile = handleFromHref(profile?.getAttribute("href"));
+	if (fromProfile) return { handle: fromProfile, name: null };
+
+	const switcher = document.querySelector<HTMLElement>('[data-testid="SideNav_AccountSwitcher_Button"]');
+	const fromSwitcher = handleFromHref(switcher?.querySelector<HTMLAnchorElement>('a[href^="/"]')?.getAttribute("href"));
+	if (fromSwitcher) return { handle: fromSwitcher, name: null };
+	const switcherAvatar = switcher?.querySelector<HTMLElement>('[data-testid^="UserAvatar-Container-"]');
+	if (switcherAvatar) {
+		const handle = switcherAvatar.getAttribute("data-testid")?.replace("UserAvatar-Container-", "") ?? null;
+		if (handle) return { handle, name: null };
+	}
+
 	const header = document.querySelector<HTMLElement>('[data-testid="UserName"]');
 	if (!header) return null;
 	const text = clean(header.textContent);
 	return { handle: /@([A-Za-z0-9_]{1,15})/.exec(text)?.[1] ?? null, name: null };
+}
+
+// A one-segment path as a handle. The reserved set above already covers the
+// routes that share the handle shape (`/home`, `/explore`), so a profile link
+// pointing at one of them is not read as an account name.
+function handleFromHref(href: string | null | undefined): string | null {
+	const segment = /^\/([A-Za-z0-9_]{1,15})\/?$/.exec(href ?? "")?.[1];
+	if (!segment || RESERVED.has(segment.toLowerCase())) return null;
+	return segment;
 }
 
 // The status whose conversation is open, read from the URL. X accepts a status
