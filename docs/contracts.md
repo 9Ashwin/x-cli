@@ -68,14 +68,26 @@ change, and repeating it spends the same time for the same answer.
 | `auth login` | navigation | no |
 | `auth status` | read | no |
 | `status` | read | no |
-| `timeline read` | navigation | no |
-| `thread list` | navigation | no |
-| `thread get` | navigation | no |
+| `feed read` | navigation | no |
+| `search keyword` | navigation | no |
+| `search hot` | navigation | no |
+| `trend read` | navigation | no |
+| `trend posts` | navigation | no |
+| `auto suggest` | navigation | no |
+| `notice read` | navigation | no |
+| `post get` | navigation | no |
+| `saved bookmarks` / `saved likes` | navigation | no |
 | `comment list` | navigation | no |
 | `comment get` | navigation | no |
+| `comment section` | navigation | no |
+| `comment check` | navigation | no |
 | `comment scroll` | navigation | no |
 | `comment post` | account_write | yes |
 | `comment reply` | account_write | yes |
+| `comment delete` / `delete-many` | account_write | yes |
+| `post create` | account_write | yes |
+| `post like` / `post bookmark` / `post repost` | account_write | yes |
+| `user follow` | account_write | yes |
 | `receipt get` | read | no |
 | `history list` | read | no |
 | `clean` | local | no |
@@ -110,7 +122,7 @@ change, and repeating it spends the same time for the same answer.
 }
 ```
 
-`source` is `timeline`, `search` or `status`. `thread get` returns
+`source` is `timeline`, `search` or `status`. `post get` returns
 `{ status_id, item, scope, complete, limits }` instead, because there is exactly
 one item by definition.
 

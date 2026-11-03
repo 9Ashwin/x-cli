@@ -6,17 +6,48 @@ ids, and a refusal instead of a guess whenever the page disagrees.
 
 ## What it does today
 
+**Finding something to answer**
+
+| Command | What it does |
+| --- | --- |
+| `x-cli auto suggest` | Ranks posts worth replying to, with each one's section already measured |
+| `x-cli feed read` | Your home timeline, as the page renders it |
+| `x-cli trend read` | X's Explore board: Trending, News, Sports, Entertainment |
+| `x-cli trend posts` | The posts under one board entry |
+| `x-cli search keyword` | A keyword, newest first |
+| `x-cli search hot` | A keyword on X's Top tab, with full engagement counts |
+| `x-cli saved bookmarks` / `saved likes` | What this account already kept |
+
+**Reading a conversation**
+
+| Command | What it does |
+| --- | --- |
+| `x-cli comment list` | The replies the page has rendered under a status |
+| `x-cli comment get` | One reply plus the status it answers |
+| `x-cli post get` | One status, without its replies |
+| `x-cli comment section` | What this section's replies are like, and what drew a reaction |
+| `x-cli comment check` | Measure a draft against the section it would join |
+
+**Writing**
+
+| Command | What it does |
+| --- | --- |
+| `x-cli comment post` | Reply to a status |
+| `x-cli comment reply` | Reply to one reply in a conversation |
+| `x-cli post create` | Publish a new post |
+| `x-cli comment delete` / `delete-many` | Remove your own replies, with ownership proved from the author |
+| `x-cli post like` / `bookmark` / `repost` | Set a post's state for this account |
+| `x-cli user follow` | Follow or unfollow an account |
+
+**Pieces around the edges**
+
 | Command | What it does |
 | --- | --- |
 | `x-cli auth login` | Opens X's sign-in in the dedicated Chrome profile |
 | `x-cli auth login --manual` | Same, with the debugging port off — required for Google sign-in |
 | `x-cli auth status` | Whether the tab is signed in, and as whom |
 | `x-cli status` | Page kind, URL, account and the open status |
-| `x-cli comment list` | The replies the page has rendered under a status |
-| `x-cli comment get` | One reply plus the status it answers |
-| `x-cli comment post` | Reply to a status |
-| `x-cli comment reply` | Reply to one reply in a conversation |
-| `x-cli comment scroll` | Move the conversation down |
+| `x-cli notice read` | Who liked, replied to, mentioned or followed you |
 | `x-cli receipt get` | The durable record of one write |
 | `x-cli history list` | Every confirmed operation, locally |
 | `x-cli browser start/stop/status/configure` | The dedicated Chrome |
@@ -89,9 +120,9 @@ nothing loaded, not that nobody replied.
 ## Reading a timeline or a search
 
 ```bash
-x-cli timeline read --limit 20 --scrolls 2
-x-cli thread list --query "AI agent" --limit 20
-x-cli thread get --status 1234567890
+x-cli feed read --limit 20 --scrolls 2
+x-cli search keyword --query "AI agent" --limit 20
+x-cli post get --status 1234567890
 ```
 
 All three return the same shape, so `items[].id` goes straight into
@@ -165,13 +196,13 @@ directory, or point the agent at this file.
 
 - X changes its markup. Every read is bounded to what the page rendered, and a
   changed control is reported as `selector_changed` rather than retried blindly.
-- No posting a new tweet, no likes, no follows, no DMs, no notifications, no lists.
+- No direct messages: X gates them behind a four-digit passcode screen this tool does not attempt. No Lists.
 - Tested against a signed-in account on x.com with English and Chinese UI. Other
   locales and account tiers may need selector work.
 
 ## Reading and replying are separate
 
-`timeline read` and `thread list` return candidates. `comment post` sends one
+`auto suggest`, `feed read` and `search keyword` return candidates. `comment post` sends one
 reply, to one id you name. There is no command that joins the two.
 
 That gap is the point. Choosing which post to answer and writing what to say are
@@ -179,10 +210,15 @@ judgement calls, and judgement in a CLI is judgement nobody can ask about. If th
 tool picked the target, "why this post" would have no answer; if it wrote the
 text, "what does it mean" would have none either.
 
-So the tool provides no automatic target selection, no generated comment text,
-and no randomised or "human-like" spacing between sends. Spacing is something a
-calling script can do if it wants; making it look human is not a feature this
-repository builds.
+`auto suggest` narrows the first half without closing it: it ranks candidates and
+reports the numbers it used (`signals`), the reason each is where it is (`why`),
+and what is already in the post (`angles`). It does not write a reply and does
+not send one. `angles` are pointers at the post, not drafts, and pasting one in
+is the generic praise `comment check` is built to catch.
+
+So the tool provides no generated comment text and no randomised or
+"human-like" spacing between sends. Spacing is something a calling script can do
+if it wants; making it look human is not a feature this repository builds.
 
 Reading commands and sending commands are separate here for the same reason. A
 tool that did both in one step would be choosing on the caller's behalf, and the
