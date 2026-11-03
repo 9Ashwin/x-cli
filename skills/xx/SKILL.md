@@ -1,6 +1,6 @@
 ---
 name: xx
-description: "Operate X (Twitter) through the local `xx` — read your timeline, the Explore board, a keyword search, or one conversation; post, reply, like, bookmark, repost, follow and delete; and read notifications. Use this whenever the task involves X or Twitter at all: reading what people are saying under a post, finding posts worth answering, warming up a reply, publishing a new post, checking whether something actually went out, or signing in for the first time. Also use it when the user says 看看这条推的评论, 找点热帖, 自动去热帖评论, 挑几条值得回的, 回复这条推, 发个回复, 发个新帖, 查一下发出去没有, 我的收藏在哪, 最近谁找过我, or names X or Twitter in any language without mentioning a CLI."
+description: "Operate X (Twitter) through the x-cli tool, whose command is `xx` — read your timeline, the Explore board, a keyword search, or one conversation; post, reply, like, bookmark, repost, follow and delete; and read notifications. Use this whenever the task involves X or Twitter at all: reading what people are saying under a post, finding posts worth answering, warming up a reply, publishing a new post, checking whether something actually went out, or signing in for the first time. Also use it when the user says 看看这条推的评论, 找点热帖, 自动去热帖评论, 挑几条值得回的, 回复这条推, 发个回复, 发个新帖, 查一下发出去没有, 我的收藏在哪, 最近谁找过我, or names X or Twitter in any language without mentioning a CLI."
 allowed-tools: Bash(xx:*) Bash(node dist/cli.js:*)
 ---
 

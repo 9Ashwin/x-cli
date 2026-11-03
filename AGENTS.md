@@ -31,9 +31,9 @@ Use Conventional Commits for commit messages and PR titles.
 
 ## What this project is
 
-`xx` is a local CLI that lets an agent operate X (Twitter) from the command
-line: read a conversation, post a reply, and leave a durable record of every
-write. It does not bundle a model, schedule anything, or decide content — the
+The project is **x-cli**; its command is **`xx`**. It is a local CLI that lets an
+agent operate X (Twitter) from the command line: read a conversation, post a
+reply, and leave a durable record of every write. It does not bundle a model, schedule anything, or decide content — the
 calling agent does that.
 
 Two commitments shape most of the code:

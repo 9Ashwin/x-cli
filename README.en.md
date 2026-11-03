@@ -7,12 +7,12 @@
 
 <img src="docs/assets/xx-hero-v2.png" alt="xx — X, from your terminal. Read, reply, record." width="100%" />
 
-# xx
+# x-cli
 
 **Let your AI agent use X.**
 
-A local command-line tool that connects an agent, the X page, and a receipt for
-every write.
+A local command-line tool, invoked as `xx`. It connects an agent, the X page, and
+a receipt for every write.
 
 <img src="https://img.shields.io/badge/node-%E2%89%A522.19-339933?logo=node.js&logoColor=white" alt="Node.js 22.19+" />
 <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License" />
@@ -23,7 +23,8 @@ every write.
 
 ## What this is
 
-Hand `xx` to an agent that can run shell commands and it can read your
+The project is **x-cli**; the command is **`xx`**. Hand `xx` to an agent that can
+run shell commands and it can read your
 timeline, the Explore board, a keyword search or one conversation — and reply,
 post, like, follow or delete.
 

@@ -33,7 +33,7 @@ function boolean(value: string): boolean {
 
 export function createProgram(io: Streams, parentSignal?: AbortSignal, version = ""): Command {
 	const root = new Command("xx");
-	root.description("Operate X from the command line: read a conversation, post a reply, keep a receipt");
+	root.description("x-cli — operate X from the command line: read a conversation, post a reply, keep a receipt");
 	root.version(version, "-v, --version", "Print the version");
 	root.exitOverride().showHelpAfterError(false);
 	root.configureOutput({

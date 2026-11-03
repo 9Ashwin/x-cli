@@ -1,8 +1,8 @@
 {
-	"name": "xx",
+	"name": "x-cli",
 	"version": "0.1.0",
 	"packageManager": "pnpm@10.34.7",
-	"description": "Operate X from the command line: read a conversation, post a reply, and leave a receipt",
+	"description": "x-cli: operate X from the command line. The command is `xx` — read a conversation, post a reply, and leave a receipt",
 	"type": "module",
 	"license": "MIT",
 	"bin": {

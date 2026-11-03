@@ -59,5 +59,5 @@ test("a missing reply id is refused before any browser work", async () => {
 test("help is a presentation exception and exits zero", async () => {
 	const { io, out } = streams();
 	assert.equal(await run(["--help"], io), 0);
-	assert.match(out.join(""), /Operate X/);
+	assert.match(out.join(""), /operate X/);
 });

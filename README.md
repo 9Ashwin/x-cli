@@ -7,11 +7,11 @@
 
 <img src="docs/assets/xx-hero-v2.png" alt="xx：在终端使用 X，读取、回复、留下收据。" width="100%" />
 
-# xx
+# x-cli
 
 **让你的 AI Agent 用 X（Twitter）。**
 
-一个本地命令行工具，连接 Agent、X 页面和每一次写入的收据。
+本地命令行工具，命令叫 `xx`。连接 Agent、X 页面和每一次写入的收据。
 
 <img src="https://img.shields.io/badge/node-%E2%89%A522.19-339933?logo=node.js&logoColor=white" alt="Node.js 22.19+" />
 <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License" />
@@ -22,7 +22,7 @@
 
 ## 这是什么
 
-`xx` 的命令叫 `xx`。把它交给能执行 shell 的 AI Agent，就能读时间线、看热榜、搜关键词、读一条推下面的对话，并回复、发帖、点赞、关注、删帖。
+项目叫 **x-cli**，命令叫 **`xx`**。把 `xx` 交给能执行 shell 的 AI Agent，就能读时间线、看热榜、搜关键词、读一条推下面的对话，并回复、发帖、点赞、关注、删帖。
 
 **Agent 负责理解和判断，`xx` 提供操作和证据。** 项目不内建模型，也不运行定时任务；它用你已有的 Agent 和本机 Chrome。
 
@@ -32,7 +32,7 @@
 
 准备好 **Node.js 22.19+、Chrome，以及一个能执行 shell 的 Agent**。
 
-`xx` 的 skill 在仓库的 `skills/xx/`，按 Agent Skills 的目录约定摆放，所以 `npx skills add https://github.com/9Ashwin/x-cli --skill xx` 能直接装。
+x-cli 的 skill 在仓库的 `skills/xx/`，按 Agent Skills 的目录约定摆放，所以 `npx skills add https://github.com/9Ashwin/x-cli --skill xx` 能直接装。
 
 ### 1. 安装
 
