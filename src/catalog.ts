@@ -98,7 +98,7 @@ export const COMMANDS: CommandSpec[] = [
 	},
 	{
 		id: "browser.configure",
-		description: "Set the Chrome executable, display mode or proxy",
+		description: "Set the Chrome executable, display mode, proxy, or publishing review",
 		flags: [
 			{ key: "chrome", name: "--chrome <path>", description: "Chrome executable path", type: "string" },
 			{
@@ -113,9 +113,16 @@ export const COMMANDS: CommandSpec[] = [
 				description: "Proxy server for the browser, e.g. http://127.0.0.1:7890",
 				type: "string",
 			},
+			{
+				key: "review",
+				name: "--review <boolean>",
+				description: "Require a first look before publishing (default true)",
+				type: "boolean-value",
+			},
 		],
 		effect: "local",
-		guidance: "X is unreachable on some networks without a proxy. Set it once; browser start passes it to Chrome.",
+		guidance:
+			"X is unreachable on some networks without a proxy. Set it once; browser start passes it to Chrome.\n\n`--review false` lets this account publish replies and posts without the first-look refusal that otherwise comes with every send. It is remembered, so it applies to every later command until it is set back to true. Turning it off is a decision about who may speak for this account without being asked; the default is on because a public sentence cannot be unsent.",
 	},
 	{
 		id: "browser.config",
@@ -257,14 +264,21 @@ export const COMMANDS: CommandSpec[] = [
 			{
 				key: "scrolls",
 				name: "--scrolls <count>",
-				description: "Scrolls used to read each candidate's replies",
+				description: "Scrolls used to read each measured candidate's replies",
 				type: "number",
 				default: 2,
 			},
 			{
 				key: "section_limit",
 				name: "--section-limit <count>",
-				description: "Replies read per candidate when measuring its section",
+				description: "Measure this many candidates' sections; 0 (default) measures none",
+				type: "number",
+				default: 0,
+			},
+			{
+				key: "replies",
+				name: "--replies <count>",
+				description: "Replies read per measured candidate",
 				type: "number",
 				default: 40,
 			},
@@ -284,7 +298,7 @@ export const COMMANDS: CommandSpec[] = [
 		],
 		effect: "navigation",
 		guidance:
-			"The one command that answers \"where should I reply\". It gathers posts from three sources — the home timeline, the Trending board used as search terms, and an optional keyword search — then opens each candidate's own conversation and measures it, so the ranking is not just engagement. `--goal reply` favours posts where each reply gets attention (views per reply); `--goal conversation` favours sections that have not already filled up with substance. Each candidate comes back with its section profile, the numbers the ranking used, a one-line `why`, and `angles` pointing at what is actually in the post. It never writes a reply, never picks what to say, and never sends anything — the writing is the caller's, and `comment check` measures the result against the same section. At most 8 candidates are opened because each costs a navigation; the rest are ranked but unmeasured. Every suggestion is recorded by post id, and a post already shown within `--seen-within` days is marked `seen.seen_recently` and ranked after the fresh ones — so a scheduled run does not propose the same post twice. Seen state lives in the state directory, never in the repository.",
+			"The one command that answers \"where should I reply\". It gathers posts from three sources — the home timeline, the Trending board used as search terms, and an optional keyword search — then opens each candidate's own conversation and measures it, so the ranking is not just engagement. `--goal reply` favours posts where each reply gets attention (views per reply); `--goal conversation` favours sections that have not already filled up with substance. Each candidate comes back with its section profile, the numbers the ranking used, a one-line `why`, and `angles` pointing at what is actually in the post. It never writes a reply, never picks what to say, and never sends anything — the writing is the caller's, and `comment check` measures the result against the same section. Sections are not read by default: each one costs a navigation, and measuring eight made this command take forty seconds against a forty-five second timeout. Pass `--section-limit <n>` to measure the top n (at most 8) in the same call, or run `comment section` on the candidates you care about. Every suggestion is recorded by post id, and a post already shown within `--seen-within` days is marked `seen.seen_recently` and ranked after the fresh ones — so a scheduled run does not propose the same post twice. Seen state lives in the state directory, never in the repository.",
 		examples: [
 			"xx auto suggest",
 			'xx auto suggest --source search --query "AI agent" --goal reply',

@@ -38,6 +38,10 @@ export interface Input {
 	source?: string;
 	goal?: string;
 	section_limit?: number;
+	replies?: number;
+	// Whether a write must be shown before it is published. Persisted by
+	// browser.configure; false means the account may publish without a first look.
+	review?: boolean;
 	// Days a previously suggested post stays demoted. 0 disables the check.
 	seen_within?: number;
 	// Answer to the posting-pace prompt. It does not grant anything by itself; it

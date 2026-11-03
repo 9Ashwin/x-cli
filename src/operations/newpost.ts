@@ -4,6 +4,7 @@ import type { ChromeManager, Point, Session } from "../browser.ts";
 import { CliError } from "../errors.ts";
 import { quiet, type Reproduce } from "../progress.ts";
 import type { Receipt, Store } from "../store.ts";
+import { type ApprovalRequest, approvalRequest } from "./approval.ts";
 import { waitFor } from "./navigation.ts";
 import type { Input } from "./validate.ts";
 
@@ -29,7 +30,7 @@ export async function publish(
 	input: Input,
 	signal: AbortSignal,
 	deps: { store: Store; chrome: ChromeManager; timeout: number; progress?: Reproduce; self: string | null },
-): Promise<NewPostResult> {
+): Promise<NewPostResult | ApprovalRequest> {
 	const { store, chrome, timeout, self } = deps;
 	const step = deps.progress ?? quiet;
 	const text = input.text ?? "";
@@ -48,6 +49,16 @@ export async function publish(
 		if (existing.status === "confirmed")
 			return { request_id: key, confirmed: true, changed: false, result: existing.result };
 		if (existing.status !== "not_sent") throw uncertain(key, existing);
+	}
+
+	// The same first look a reply gets. A new post addresses nobody, so the
+	// target block is empty; the text is the whole of what is being shown.
+	const config = await store.config();
+	if (config.review !== false && input.confirm !== true) {
+		const repeated = (await store.events()).some(
+			(event) => event.operation === "post.create" && (event.data as { text?: unknown })?.text === text,
+		);
+		return approvalRequest("post", input, text, null, null, key, repeated);
 	}
 
 	step("connecting", { operation: "post.create" });

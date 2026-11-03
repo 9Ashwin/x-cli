@@ -148,6 +148,8 @@ xx comment post --status <id> --text "…" --request-id reply-<id>-01
 
 **`--request-id` is required, and every new send needs a new one.** A write without one is refused.
 
+The first run **does not send**: it returns `needs_approval` with the exact text and target, having typed nothing and written no receipt. Rerun with the same id and `--confirm` to publish. `xx browser configure --review false` turns this off for the account, and is remembered.
+
 ## Operations and evidence
 
 - **A receipt is written before the press.** Replaying a confirmed request id

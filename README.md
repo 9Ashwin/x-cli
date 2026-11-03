@@ -121,6 +121,8 @@ xx comment post --status <id> --text "…" --request-id reply-<id>-01
 
 **`--request-id` 必须给，每次新的发送用新的 id。** 不给会被拒绝。
 
+第一次执行**不会发**：返回 `needs_approval` 加要发的原文和目标，什么都没输入、没写收据。看过之后用同一个 id 加 `--confirm` 才真正发出。这条闸可以用 `xx browser configure --review false` 关掉，会被记住。
+
 ## 操作与证据边界
 
 - **写之前先留收据。** 已确认的 request ID 重放时返回原收据；遇到 `delivery_uncertain` 先核对，**不自动重发**。

@@ -4,6 +4,7 @@ import type { ChromeManager, Point, Session } from "../browser.ts";
 import { CliError } from "../errors.ts";
 import { quiet, type Reproduce } from "../progress.ts";
 import type { Receipt, Store } from "../store.ts";
+import { approvalRequest } from "./approval.ts";
 import type { TweetRow } from "./comments.ts";
 import { openStatus, waitFor } from "./navigation.ts";
 import { authorOf, type Input } from "./validate.ts";
@@ -107,7 +108,34 @@ export async function send(operation: string, input: Input, signal: AbortSignal,
 	try {
 		step("opening_status", { status_id: rootID });
 		await openStatus(session, rootID, signal, authorOf(input));
-		const { target } = await resolveTarget(session, input, rootID);
+		const { target, root } = await resolveTarget(session, input, rootID);
+
+		// The first look. It happens here, after the page has been read and before
+		// anything is typed, so the text and target it returns are the ones that
+		// would actually go out — a mistyped id shows up as the post it really
+		// points at. Nothing is written: no receipt, no keystroke, and the request
+		// id is still unused.
+		//
+		// `--confirm` is the second look. The setting exists so an account that has
+		// decided its caller may publish without one does not have to pass it every
+		// time; the default is on.
+		const config = await store.config();
+		if (config.review !== false && input.confirm !== true) {
+			const repeated = (await store.events()).some(
+				(event) =>
+					(event.operation === "comment.post" || event.operation === "comment.reply") &&
+					(event.data as { text?: unknown })?.text === text,
+			);
+			return approvalRequest(
+				operation === "comment.reply" ? "reply" : "post",
+				input,
+				text,
+				root ? { id: root.id, handle: root.handle, text: root.text } : null,
+				input.comment_id ? target : null,
+				key,
+				repeated,
+			);
+		}
 
 		// A composer already open would be someone else's draft; the page adapter
 		// refuses to overwrite it, so it is reported before anything is typed.

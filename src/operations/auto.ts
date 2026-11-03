@@ -36,8 +36,11 @@ export interface Candidate {
 	source: "timeline" | "trend" | "search";
 	// The topic or query that produced it, when there was one.
 	via: string | null;
-	// The section as it actually reads, when it could be measured.
+	// The section as it actually reads. Null when this candidate was not
+	// measured — the default, because measuring costs a navigation per post.
 	section: SectionProfile | null;
+	// Whether this candidate's section was read at all.
+	measured: boolean;
 	// Why the section could not be measured, when it could not.
 	section_error: string | null;
 	// Numbers the ranking used. Kept in the response so the order is inspectable
@@ -351,28 +354,39 @@ export async function suggest(
 			details: { sources, failures },
 		});
 
-	// Rank before measuring: opening every candidate's section would navigate once
-	// per post, and the ranking only needs the engagement the cards already give.
+	// Rank first, then measure only what the caller asked to measure.
+	//
+	// The first version always opened the top eight conversations to profile
+	// their sections. That is eight navigations on top of the three sources, and
+	// the command took ~40 seconds against a 45-second default timeout — it
+	// worked until the page was a little slow and then failed outright, losing
+	// every source's work. Ranking needs only what the cards already print; the
+	// section is a second, optional step, and the caller who wants it should pay
+	// for it on the posts they actually care about.
 	const ranked = [...pool.values()]
 		.map((post) => ({ post, score: openness(post) ?? 0 }))
 		.sort((left, right) => right.score - left.score);
-	const measured = ranked.slice(0, MAX_MEASURED);
+	const measureLimit = Math.min(Math.max(input.section_limit ?? 0, 0), MAX_MEASURED);
+	const measured = ranked.slice(0, measureLimit);
 
 	const scrolls = Math.min(Math.max(input.scrolls ?? 2, 0), 10);
-	const sectionLimit = Math.min(Math.max(input.section_limit ?? 40, 1), 200);
-	const items: Candidate[] = [];
+	const sectionLimit = Math.min(Math.max(input.replies ?? 40, 1), 200);
+	const profiles = new Map<string, SectionProfile | null>();
+	const sectionErrors = new Map<string, string | null>();
 	for (const { post } of measured) {
 		signal.throwIfAborted();
-		let section: SectionProfile | null = null;
-		let sectionError: string | null = null;
 		try {
-			section = (await measureSection(session, post, signal, scrolls, sectionLimit)).section;
+			profiles.set(post.id, (await measureSection(session, post, signal, scrolls, sectionLimit)).section);
 		} catch (error: unknown) {
 			// A section that could not be read is still a candidate: the post exists,
 			// and the caller can open it by hand. Losing the whole list because one
 			// reply page was slow would be the wrong failure.
-			sectionError = error instanceof Error ? error.message : String(error);
+			sectionErrors.set(post.id, error instanceof Error ? error.message : String(error));
 		}
+	}
+
+	const items: Candidate[] = ranked.map(({ post }) => {
+		const section = profiles.get(post.id) ?? null;
 		const reach = reachOf(post);
 		const replies = numeric(post.engagement.replies);
 		const signals: Candidate["signals"] = {
@@ -382,7 +396,7 @@ export async function suggest(
 			openness: openness(post),
 			attention_basis: reach.basis,
 		};
-		items.push({
+		return {
 			id: post.id,
 			handle: post.handle,
 			name: post.name,
@@ -392,14 +406,17 @@ export async function suggest(
 			engagement: post.engagement,
 			source: post.source,
 			via: post.via,
+			// Null when this candidate was not measured. That is not the same as a
+			// section that failed to load, which carries `section_error`.
 			section,
-			section_error: sectionError,
+			section_error: sectionErrors.get(post.id) ?? null,
+			measured: profiles.has(post.id) || sectionErrors.has(post.id),
 			signals,
 			why: whyFor(goalValue, signals, post),
 			seen: stateOf(seen, post.id, withinDays),
 			angles: anglesFor(post, section),
-		});
-	}
+		};
+	});
 
 	// The final order follows the goal. This is the one place the command ranks,
 	// and it says which numbers it used. `attention_per_reply` is the default
@@ -428,7 +445,7 @@ export async function suggest(
 	return {
 		sources,
 		considered: pool.size,
-		measured: items.length,
+		measured: items.filter((candidate) => candidate.measured).length,
 		seen_skipped: seenSkipped,
 		items,
 		scope: "loaded_dom",
@@ -438,7 +455,7 @@ export async function suggest(
 			"`angles` point at what is in the post and section. They are not drafted replies and should not be pasted as one.",
 			"Each candidate's section was read as a window, like `comment section`: the replies X chose to render, not all of them.",
 			"A candidate whose section could not be read keeps its engagement numbers and reports `section_error`.",
-			`At most ${MAX_MEASURED} candidates have their section read, because each one costs a navigation. The rest are ranked but not measured.`,
+			`Sections are not read unless \`--section-limit\` is given: each costs a navigation, and doing eight of them made this command take forty seconds against a forty-five second timeout. Rank first, then run \`comment section\` on the candidates you care about. At most ${MAX_MEASURED} can be measured in one call.`,
 			`A post already shown in the last ${withinDays} day(s) is ranked after the fresh ones and marked \`seen.seen_recently\`; it is not dropped. This is what keeps a scheduled run from proposing the same post twice. \`--seen-within 0\` turns the check off.`,
 			...(words.length
 				? [

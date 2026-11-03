@@ -327,6 +327,7 @@ export class App {
 					...(input.chrome === undefined ? {} : { chrome: input.chrome }),
 					...(input.headless === undefined ? {} : { headless: input.headless }),
 					...(input.proxy === undefined ? {} : { proxy: input.proxy }),
+					...(input.review === undefined ? {} : { review: input.review }),
 				};
 				await this.store.write("config.json", config);
 				return config;

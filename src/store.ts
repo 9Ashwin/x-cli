@@ -9,6 +9,16 @@ import { withLease } from "./lease.ts";
 export interface BrowserConfig {
 	chrome?: string;
 	headless?: boolean;
+	// Whether a write may publish without being shown first. Off by default: the
+	// first send of anything that goes out in this account's name is refused and
+	// returned with its text, and only a run that has seen that text sends.
+	//
+	// This lives here rather than in a file the agent keeps, because it is a
+	// decision about who may speak for this account, and it belongs to whoever
+	// runs the machine. It is one flag rather than a per-target grant: a switch
+	// that says "this account may publish without a look" is honest about how
+	// much it gives away, and easy to turn back off.
+	review?: boolean;
 	// X is unreachable without a proxy from some networks. Chrome can use the
 	// system proxy, but the state of a machine the tool runs on is not something
 	// a command should have to guess about, so it can be stated once here.
@@ -108,7 +118,8 @@ export class Store {
 			typeof value !== "object" ||
 			(value.chrome !== undefined && typeof value.chrome !== "string") ||
 			(value.headless !== undefined && typeof value.headless !== "boolean") ||
-			(value.proxy !== undefined && typeof value.proxy !== "string")
+			(value.proxy !== undefined && typeof value.proxy !== "string") ||
+			(value.review !== undefined && typeof value.review !== "boolean")
 		)
 			throw new CliError("state_corrupt", "Invalid browser config");
 		return value;

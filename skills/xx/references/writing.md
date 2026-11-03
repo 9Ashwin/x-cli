@@ -90,6 +90,8 @@ xx comment reply --status <id> --comment-id <reply-id> --text "…" --request-id
 
 **`--request-id` 必须给，每次新的发送用新的 id。**
 
+第一次跑会返回 `needs_approval`——工具**什么都没发**，把原文和目标摊给你看。把 `text` / `target` 原样给主人，停下等回复，同意了再用同一个 id 加 `--confirm` 重跑。
+
 发之前 `--dry-run` 检查参数（不开浏览器）：
 
 ```bash
