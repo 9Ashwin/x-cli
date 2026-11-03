@@ -92,6 +92,10 @@ xx trend posts --index 1 --tab news --limit 10
 
 `--tab` 必须和 `trend read` 时一致，否则点到的是另一条。
 
+**`row_index` 只在紧接着的那一次调用里有效。** 榜单会重新渲染、合并行、跟着语言和地区变；两次 `trend read` 之间 X 可能把行重排。所以拿到 `row_index` 就马上用，不要存下来过一会儿再点。
+
+`trend read` 只返回页面**已经渲染**的行（通常是前 12～20 条）。滚动能加载更多，但 `row_index` 只是当前这一份 DOM 里的位置。
+
 **四个 tab 不是一回事。** `trending` 是排好序的关键词，落在 `/search?q=…`；`news` / `sports` / `entertainment` 是一行一行的新闻，落在 `/i/trending/<id>`。两边都能读到帖子，返回值的 `url` 说明这次落在哪。
 
 ## `search hot` 的运算符
