@@ -25,9 +25,10 @@ const PATH: Record<Shelf, string> = {
 };
 
 export interface ShelfItem extends TweetRow {
-	// What the card says this account has already done to it.
-	liked: boolean;
-	bookmarked: boolean;
+	// What the card says this account has already done to it. Null means the card
+	// had not rendered its action row when it was read.
+	liked: boolean | null;
+	bookmarked: boolean | null;
 }
 
 export interface ShelfResult {
@@ -67,13 +68,26 @@ export async function readShelf(
 	const limit = Math.min(Math.max(input.limit ?? 20, 1), 200);
 	const collected = new Map<string, ShelfItem>();
 	const read = async () => {
-		const rows = await session.call<(TweetRow & { liked: boolean; bookmarked: boolean })[]>("tweet.list");
-		for (const row of rows) collected.set(row.id, row);
+		const rows = await session.call<ShelfItem[]>("tweet.list");
+		for (const row of rows) {
+			// A row whose action row has not rendered reports null for the state this
+			// list exists to answer. The next poll fills it in; a known value is never
+			// replaced by an unknown one, so a later blank frame cannot erase it.
+			const seen = collected.get(row.id);
+			if (seen && seen.bookmarked !== null && row.bookmarked === null) continue;
+			collected.set(row.id, row);
+		}
 	};
 	for (let attempt = 0; attempt < 30 && !collected.size; attempt++) {
 		signal.throwIfAborted();
 		await read();
 		if (!collected.size) await new Promise((resolve) => setTimeout(resolve, 400));
+	}
+	// Every row in this list should be bookmarked by definition. One that reads
+	// otherwise was read before its action row rendered, so it is re-read.
+	for (let attempt = 0; attempt < 10 && [...collected.values()].some((row) => row.bookmarked === null); attempt++) {
+		await new Promise((resolve) => setTimeout(resolve, 400));
+		await read();
 	}
 
 	const scrolls = Math.min(Math.max(input.scrolls ?? 0, 0), 20);

@@ -53,7 +53,11 @@ export async function openWithoutDebugging(
 	profile: string,
 	url: string,
 	signal: AbortSignal,
-): Promise<{ closed: boolean; started: boolean; notes?: string[] }> {
+	// Called on every poll. Returning true means the sign-in landed and the window
+	// can be closed — the owner does not have to close it, and the command stops
+	// waiting on a person for something the profile already states.
+	completed?: () => Promise<boolean>,
+): Promise<{ closed: boolean; started: boolean; signed_in?: boolean; notes?: string[] }> {
 	const child = spawn(executable, [`--user-data-dir=${profile}`, "--no-first-run", url], {
 		detached: true,
 		stdio: "ignore",
@@ -81,6 +85,19 @@ export async function openWithoutDebugging(
 	let windowGoneFor = 0;
 	while (await profileLocked(profile)) {
 		signal.throwIfAborted();
+		// The session is written before the owner is done looking at the window.
+		// Checking it here is what turns "close the window when you are ready" into
+		// "you are signed in, carrying on" — and it is also the only way this can
+		// end without a person present.
+		if (completed && (await completed())) {
+			const released = await quitProfile(profile);
+			return {
+				closed: released,
+				started: true,
+				signed_in: true,
+				notes: ["the sign-in landed; the browser was closed rather than left waiting on you"],
+			};
+		}
 		// On macOS closing the last window does not quit Chrome, so the lock is
 		// held by a process with no window at all — the first version waited on the
 		// lock alone and hung until the owner force-quit. A process that has been

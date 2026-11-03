@@ -135,7 +135,7 @@ export const COMMANDS: CommandSpec[] = [
 		],
 		effect: "navigation",
 		guidance:
-			'The tool never types credentials. Complete the form in Chrome; the dedicated profile keeps the session for every later command. Run auth status afterwards.\n\nThis closes the automation browser, opens the same profile without a debugging port, waits until you close the window, then reads the session back. That indirection is the default because the direct route fails: Google refuses a browser started with a debugging port and shows "this browser or app may not be secure", which is the most common reason a sign-in appears to do nothing. Pass --manual false only for an account that does not use Google and wants the shorter route.',
+			'The tool never types credentials. Complete the form in Chrome; the dedicated profile keeps the session for every later command. Run auth status afterwards.\n\nThis closes the automation browser, opens the same profile without a debugging port, and watches the profile\'s session cookies: the moment X writes auth_token and ct0 the window is closed and the session read back. You do not have to close it yourself. That indirection is the default because the direct route fails: Google refuses a browser started with a debugging port and shows "this browser or app may not be secure", which is the most common reason a sign-in appears to do nothing. Pass --manual false only for an account that does not use Google and wants the shorter route.',
 	},
 	{
 		id: "auth.status",

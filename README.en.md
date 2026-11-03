@@ -62,9 +62,11 @@ xx auth login
 ```
 
 It closes the automation browser, opens the same profile **without** the
-debugging port, lets you sign in yourself, and reads the session back once you
-close the window. **The tool never types a password.** The session lives in
-`~/.xx/chrome`, so it survives restarts.
+debugging port, and lets you sign in yourself. It notices when you are done —
+the moment `auth_token` and `ct0` appear in the profile it closes the window,
+switches back to the automation browser and reads the session back — so there is
+no window for you to close. **The tool never types a password.** The session
+lives in `~/.xx/chrome`, so it survives restarts.
 
 That is the default because the other route fails: Google refuses a browser
 started with a debugging port and shows *"This browser or app may not be

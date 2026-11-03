@@ -22,6 +22,7 @@ import { readBoard, readTopic } from "./operations/trend.ts";
 import { authorOf, type Input, isWrite, statusID, validateTarget, validateText } from "./operations/validate.ts";
 import { send } from "./operations/write.ts";
 import type { Reproduce } from "./progress.ts";
+import { readAuthCookies, signedIn } from "./session-cookies.ts";
 import { type BrowserConfig, Store } from "./store.ts";
 
 export interface AppOptions {
@@ -277,7 +278,18 @@ export class App {
 			if (!(error instanceof CliError) || error.code !== "browser_not_running") throw error;
 		});
 		const profile = this.store.path("chrome");
-		const result = await openWithoutDebugging(executable, profile, "https://x.com/i/flow/login", signal);
+		// What the profile held before this window opened, so a profile that was
+		// already signed in does not count as this sign-in succeeding.
+		const baseline = await readAuthCookies(profile);
+		const result = await openWithoutDebugging(executable, profile, "https://x.com/i/flow/login", signal, async () => {
+			const cookies = await readAuthCookies(profile);
+			if (!signedIn(cookies, baseline)) return false;
+			// The cookies can appear a moment before the page has finished the
+			// redirect that follows sign-in; letting it settle means the automation
+			// browser opens on the timeline rather than on a half-loaded login flow.
+			await new Promise((resolve) => setTimeout(resolve, 1500));
+			return true;
+		});
 		// The session is read back through the normal path rather than trusted
 		// from the window: a sign-in that was abandoned half way looks the same
 		// from here as one that finished.
@@ -293,9 +305,13 @@ export class App {
 			return {
 				status: page.login_required ? "still_signed_out" : "signed_in",
 				closed: result.closed,
+				// Whether the profile itself reported a session, which is the signal
+				// that ends the wait. The page read below is the confirmation.
+				cookies: result.signed_in === true,
 				account: page.account,
+				notes: result.notes,
 				next: page.login_required
-					? "The sign-in did not complete. Run xx auth login --manual again."
+					? "The sign-in did not complete. Run xx auth login again."
 					: "Signed in. Run xx auth status to confirm.",
 			};
 		} finally {

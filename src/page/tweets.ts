@@ -45,8 +45,12 @@ export interface TweetRow {
 	// test ids are `unlike` when liked and `removeBookmark` when bookmarked — the
 	// id names the action available, not the state, so the "remove" spelling is
 	// the positive reading.
-	liked: boolean;
-	bookmarked: boolean;
+	// Null means the card's action row had not rendered when it was read — the
+	// page shows `unlike` when liked and `like` when not, and neither is there
+	// yet. Reporting false in that gap said "you have not bookmarked this" about
+	// a post pulled from the bookmarks list.
+	liked: boolean | null;
+	bookmarked: boolean | null;
 	// What the card says it is: a repost of someone else's post, a reply, or
 	// pinned. Deleting has to distinguish these — a repost is removed without
 	// touching the original, and a pinned reply is still a reply.
@@ -259,14 +263,23 @@ export function readTweets(selfHandle: string | null): TweetRow[] {
 			depth: nestedUnder(article) ? 1 : 0,
 			promoted: promoted(article),
 			engagement_label: engagementLabel(article),
-			liked: !!article.querySelector('[data-testid="unlike"]'),
-			bookmarked: !!article.querySelector('[data-testid="removeBookmark"]'),
+			liked: toggleState(article, "unlike", "like"),
+			bookmarked: toggleState(article, "removeBookmark", "bookmark"),
 			kind: kindOf(article),
 			pinned: /pinned|已置顶|置顶/i.test(clean(article.querySelector('[data-testid="socialContext"]')?.textContent)),
 			author_link: identity(article).handle ? `/${identity(article).handle}` : null,
 		});
 	}
 	return rows;
+}
+
+// A toggle's state from its two test ids. The positive spelling (`unlike`,
+// `removeBookmark`) means the action is available, so it is on. Neither id means
+// the action row is not rendered yet, which is unknown rather than off.
+function toggleState(article: Element, on: string, off: string): boolean | null {
+	if (article.querySelector(`[data-testid="${on}"]`)) return true;
+	if (article.querySelector(`[data-testid="${off}"]`)) return false;
+	return null;
 }
 
 export function findTweet(id: string): HTMLElement {

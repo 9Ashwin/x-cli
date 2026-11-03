@@ -27,8 +27,9 @@ export interface TweetRow {
 	// Present on every row the adapter returns; the flag is what keeps a promoted
 	// post out of a list a caller is choosing a reply target from.
 	promoted?: boolean;
-	liked?: boolean;
-	bookmarked?: boolean;
+	// Null when the card had not rendered its action row: unknown, not false.
+	liked?: boolean | null;
+	bookmarked?: boolean | null;
 	kind?: "post" | "repost" | "reply";
 	pinned?: boolean;
 	author_link?: string | null;
