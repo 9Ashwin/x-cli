@@ -17,8 +17,13 @@ export interface NoticeEntry {
 	unread: boolean;
 }
 
+// The two tabs are links, not a local filter: "All" is /notifications and
+// "Mentions" is /notifications/mentions. Clicking a tab by its label meant
+// matching a localized name, and pressing the wrong one silently returned the
+// same list.
 export async function readNotificationsPage(session: Session, input: Input, signal: AbortSignal) {
-	await session.tab.goto("https://x.com/notifications", { waitUntil: "domcontentloaded" });
+	const path = input.tab === "mentions" ? "/notifications/mentions" : "/notifications";
+	await session.tab.goto(`https://x.com${path}`, { waitUntil: "domcontentloaded" });
 	const state = await session.status();
 	if (state.login_required)
 		throw new CliError("login_required", "X requires a signed-in session", { hint: "Run x-cli auth login." });

@@ -25,6 +25,8 @@ export interface Input {
 	ids?: string;
 	// Profile handle for follow/unfollow.
 	handle?: string;
+	// "all" or "mentions" for notice read.
+	tab?: string;
 	language?: string;
 	min_likes?: number;
 	min_replies?: number;

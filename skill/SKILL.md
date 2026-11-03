@@ -137,6 +137,38 @@ x-cli comment post --status 123 --text "…" --request-id t-1 --dry-run
 
 找不到是哪一条时，直接问主人要链接、id 或那次用的 request id。**不要从回执里挑一条时间最近的当成他说的那条。**
 
+## 发新帖
+
+```bash
+x-cli post create --text "…" --request-id post-01
+```
+
+和回复共用同一个编辑器，但校验方向相反：回复**必须**有引用推文，新帖**必须**没有。发出去之前 `--dry-run` 看一眼。
+
+## 关注
+
+```bash
+x-cli user follow --handle someone              # 关注
+x-cli user follow --handle someone --value false # 取消关注
+```
+
+按钮按 `aria-label` 里的 handle 匹配，所以侧栏推荐的账号不会被误点。对方的账号受保护时返回 `pending`（请求已发，等对方同意），不是失败。
+
+**X 禁止批量、无差别关注。** 没有批量命令，也别手写循环。
+
+## 看通知
+
+```bash
+x-cli notice read --limit 30
+x-cli notice read --tab mentions
+```
+
+`kind` 有七种：`like` / `reply` / `follow` / `repost` / `mention` / `recommended` / `other`。
+
+**`recommended` 不是互动** —— X 会在没有真实互动时用推荐帖子填满这个 tab。看到一片 `recommended` 说明「这个账号最近没人理」，不是「有人在互动」。别把它当成有人找过你。
+
+`other` 是这行的措辞没匹配上（可能是别的语言），不是你漏了什么。
+
 ## 点赞、收藏、转发
 
 ```bash
@@ -183,4 +215,6 @@ x-cli saved likes --limit 30
 - **自动化身份要声明。** 用这个账号做自动化时，账号简介里应说明这一点和运营者。这不是建议，是 X 开发者指南的要求。
 - 别为了让命令成功去放宽检查。真的过不去，报告卡在哪。
 
-还没做的：私信、通知、发新帖、关注、Lists。用户问起就直说没有。
+还没做的：**私信** —— X 的私信现在要 4 位 passcode 才能解密，那个密码只有账号主人知道，工具代填不了。要用私信，主人得先在自己的浏览器里输一次。
+
+其他没有的：Lists、Space、书签分组。

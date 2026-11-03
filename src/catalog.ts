@@ -234,6 +234,13 @@ export const COMMANDS: CommandSpec[] = [
 		id: "notice.read",
 		description: "Read the notifications page",
 		flags: [
+			{
+				key: "tab",
+				name: "--tab <name>",
+				description: "all or mentions",
+				type: "string",
+				default: "all",
+			},
 			{ key: "limit", name: "--limit <count>", description: "Maximum entries returned (default 30)", type: "number" },
 			{
 				key: "scrolls",
@@ -245,7 +252,7 @@ export const COMMANDS: CommandSpec[] = [
 		],
 		effect: "navigation",
 		guidance:
-			"Each entry carries the kind (like / reply / follow / repost / mention / other), the actors' handles, the row's text and its time. Rows do not include the post id: the page links the actor, not the post, so which post a notification is about is only learnable by opening it. A row whose sentence matches no known kind is reported as other rather than guessed.",
+			"Each entry carries the kind (like / reply / follow / repost / mention / recommended / other), the actors' handles, the row's text and its time. `recommended` marks a suggested post rather than someone acting: X fills this tab with suggestions when the account has no likes, replies or follows to report, and those rows would otherwise look like activity. Rows do not include the post id: the page links the actor, not the post, so which post a notification is about is only learnable by opening it. A row whose sentence matches no known kind is reported as other rather than guessed.",
 		examples: ["x-cli notice read --limit 30 --scrolls 2"],
 	},
 	{
