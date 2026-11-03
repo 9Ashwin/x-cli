@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+
+# JetBrains: workspace state is per-machine and contains editor layout.
+.idea/
+
+# Requirement documents are local working notes, not part of the project.
+tasks/
