@@ -38,6 +38,8 @@ export interface Input {
 	source?: string;
 	goal?: string;
 	section_limit?: number;
+	// Days a previously suggested post stays demoted. 0 disables the check.
+	seen_within?: number;
 	// Answer to the posting-pace prompt. It does not grant anything by itself; it
 	// records that the caller was shown the count and chose to continue.
 	confirm?: boolean;

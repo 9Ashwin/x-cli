@@ -1,9 +1,11 @@
 import type { Session } from "../browser.ts";
 import { CliError } from "../errors.ts";
+import type { Store } from "../store.ts";
 import type { TweetRow } from "./comments.ts";
 import { type Engagement, findHot, type HotPost } from "./hot.ts";
 import { waitFor } from "./navigation.ts";
 import { profileSection, type SectionProfile } from "./section.ts";
+import { readSeen, remember, type SeenState, stateOf } from "./seen.ts";
 import { readTimeline } from "./sources.ts";
 import { waitForBoard } from "./trend.ts";
 import type { Input } from "./validate.ts";
@@ -55,6 +57,8 @@ export interface Candidate {
 	};
 	// The one-line reason this candidate is where it is.
 	why: string;
+	// Whether this tool has already put the post in front of its caller.
+	seen: SeenState;
 	// Questions worth answering, phrased as what the reader should look for.
 	// These are pointers into the post, never drafted replies.
 	angles: string[];
@@ -64,6 +68,9 @@ export interface SuggestResult {
 	sources: ("timeline" | "trend" | "search")[];
 	considered: number;
 	measured: number;
+	// Candidates skipped from the ranking because they were shown recently.
+	// They are still in `items`, ranked after the fresh ones.
+	seen_skipped: number;
 	items: Candidate[];
 	scope: "loaded_dom";
 	complete: false;
@@ -225,8 +232,15 @@ async function measureSection(
 	return { section: profileSection(rows), error: null };
 }
 
-export async function suggest(session: Session, input: Input, signal: AbortSignal): Promise<SuggestResult> {
+export async function suggest(
+	session: Session,
+	input: Input,
+	signal: AbortSignal,
+	deps: { store: Store },
+): Promise<SuggestResult> {
 	const goalValue = goal(input);
+	const withinDays = Math.max(input.seen_within ?? 7, 0);
+	const seen = await readSeen(deps.store);
 	const sources = (input.source ?? "timeline,trend,search")
 		.split(",")
 		.map((value) => value.trim())
@@ -344,6 +358,7 @@ export async function suggest(session: Session, input: Input, signal: AbortSigna
 			section_error: sectionError,
 			signals,
 			why: whyFor(goalValue, signals, post),
+			seen: stateOf(seen, post.id, withinDays),
 			angles: anglesFor(post, section),
 		});
 	}
@@ -359,12 +374,24 @@ export async function suggest(session: Session, input: Input, signal: AbortSigna
 		if (goalValue === "reach") return candidate.signals.openness ?? 0;
 		return attention;
 	};
-	items.sort((left, right) => score(right) - score(left));
+	// A post shown inside the window keeps its place in the list but loses its
+	// place in the order. Dropping it would hide a post that is still being
+	// discussed; ranking it first would make a scheduled run say the same thing
+	// twice. This is the compromise, and `seen_skipped` counts it instead of
+	// leaving the caller to infer it from the order.
+	const fresh = (candidate: Candidate) => (candidate.seen.seen_recently ? 1 : 0);
+	items.sort((left, right) => fresh(left) - fresh(right) || score(right) - score(left));
+	const seenSkipped = items.filter((candidate) => candidate.seen.seen_recently).length;
+	await remember(
+		deps.store,
+		items.map((candidate) => candidate.id),
+	);
 
 	return {
 		sources,
 		considered: pool.size,
 		measured: items.length,
+		seen_skipped: seenSkipped,
 		items,
 		scope: "loaded_dom",
 		complete: false,
@@ -374,6 +401,7 @@ export async function suggest(session: Session, input: Input, signal: AbortSigna
 			"Each candidate's section was read as a window, like `comment section`: the replies X chose to render, not all of them.",
 			"A candidate whose section could not be read keeps its engagement numbers and reports `section_error`.",
 			`At most ${MAX_MEASURED} candidates have their section read, because each one costs a navigation. The rest are ranked but not measured.`,
+			`A post already shown in the last ${withinDays} day(s) is ranked after the fresh ones and marked \`seen.seen_recently\`; it is not dropped. This is what keeps a scheduled run from proposing the same post twice. \`--seen-within 0\` turns the check off.`,
 		],
 	};
 }

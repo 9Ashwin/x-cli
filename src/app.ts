@@ -133,7 +133,7 @@ export class App {
 				case "search.hot":
 					return await findHot(session, input, signal);
 				case "auto.suggest":
-					return await suggest(session, input, signal);
+					return await suggest(session, input, signal, { store: this.store });
 				case "notice.read":
 					return await readNotificationsPage(session, input, signal);
 				case "user.follow": {

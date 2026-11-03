@@ -65,6 +65,8 @@ x-cli auto suggest --source trend --goal reach
 
 `auto suggest` 不写正文、不发送。发送还是 `comment post`。
 
+**定时跑的时候**：它记着每条帖子什么时候被推过。`--seen-within <天数>`（默认 7）内的帖子仍然出现在结果里，但排在新帖后面，并标 `seen.seen_recently: true`，`seen_skipped` 告诉你降级了几条。这是为了定时任务不会每次都推同一条。想看全部按新鲜度排就 `--seen-within 0`。
+
 ## 三条找内容的路径，别混用
 
 它们回答的是三个不同的问题，混在一起会答错。

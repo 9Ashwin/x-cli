@@ -273,10 +273,17 @@ export const COMMANDS: CommandSpec[] = [
 				description: "Language filter for the search and trend sources",
 				type: "string",
 			},
+			{
+				key: "seen_within",
+				name: "--seen-within <days>",
+				description: "Demote posts suggested in the last N days; 0 disables",
+				type: "number",
+				default: 7,
+			},
 		],
 		effect: "navigation",
 		guidance:
-			"The one command that answers \"where should I reply\". It gathers posts from three sources — the home timeline, the Trending board used as search terms, and an optional keyword search — then opens each candidate's own conversation and measures it, so the ranking is not just engagement. `--goal reach` favours posts many people will see; `--goal reply` favours posts where each reply gets attention (views per reply); `--goal conversation` favours sections that have not already filled up with substance. Each candidate comes back with its section profile, the numbers the ranking used, a one-line `why`, and `angles` pointing at what is actually in the post. It never writes a reply, never picks what to say, and never sends anything — the writing is the caller's, and `comment check` measures the result against the same section. At most 8 candidates are opened because each costs a navigation; the rest are ranked but unmeasured.",
+			"The one command that answers \"where should I reply\". It gathers posts from three sources — the home timeline, the Trending board used as search terms, and an optional keyword search — then opens each candidate's own conversation and measures it, so the ranking is not just engagement. `--goal reach` favours posts many people will see; `--goal reply` favours posts where each reply gets attention (views per reply); `--goal conversation` favours sections that have not already filled up with substance. Each candidate comes back with its section profile, the numbers the ranking used, a one-line `why`, and `angles` pointing at what is actually in the post. It never writes a reply, never picks what to say, and never sends anything — the writing is the caller's, and `comment check` measures the result against the same section. At most 8 candidates are opened because each costs a navigation; the rest are ranked but unmeasured. Every suggestion is recorded by post id, and a post already shown within `--seen-within` days is marked `seen.seen_recently` and ranked after the fresh ones — so a scheduled run does not propose the same post twice. Seen state lives in the state directory, never in the repository.",
 		examples: [
 			"x-cli auto suggest",
 			'x-cli auto suggest --source search --query "AI agent" --goal reply',
