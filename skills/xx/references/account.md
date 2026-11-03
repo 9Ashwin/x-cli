@@ -21,7 +21,23 @@ xx user follow --handle someone --value false # 取消关注
 
 按钮按 `aria-label` 里的 handle 匹配，所以侧栏推荐的其他账号不会被误点。对方的账号受保护时返回 `pending`（请求已发，等对方同意），**不是失败**。
 
-**X 禁止批量、无差别关注。** 没有批量命令，也别手写循环。
+### 关注整个列表
+
+```bash
+xx list members https://x.com/i/lists/<id> --scrolls 2        # 先看名单
+xx list follow  https://x.com/i/lists/<id> --request-id lf-01 # 逐个关注
+xx list follow  https://x.com/i/lists/<id> --limit 20 --request-id lf-02
+```
+
+`list follow` 读名单后逐个调用 `user follow`：每个账号单独开主页、单独核按钮、单独留收据（request id 是 `<--request-id>-<handle>`）。
+
+- 已关注的在 `skipped` 里，不会重复点。
+- 受保护账号会尝试，结果是 `pending`（请求已发，等对方同意），不是失败。
+- 单个账号失败记进 `failed` 并继续，不会因为一个页面打不开就中断整轮。
+- 不带 `--limit` 就关注整份名单；要分批就自己给数。
+- **必带 `--request-id`。** 不需要 `--confirm`。
+
+**长名单会触发 X 的限流。** 失败条目会带各自的原因出现在 `failed` 里，看起来像账号错误但不是。分批跑比一口气跑完稳。
 
 ## 点赞、收藏、转发
 
@@ -35,7 +51,7 @@ xx post repost   --status <id> --value true
 
 同一个 request id 重放不会把状态翻回去；按了但页面没变是 `delivery_uncertain`，不会按第二次。
 
-**X 的自动化规则禁止自动点赞。** 这些命令是「你本人点一下」的等价物，不是让你批量刷。真实用户明确这么说的时候才用，别自己找帖子点。
+这些命令是「你本人点一下」的等价物。真实用户明确这么说的时候才用，别自己找帖子点。
 
 ## 删帖
 

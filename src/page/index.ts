@@ -9,10 +9,11 @@ import {
 	pendingConfirm,
 	pendingDialog,
 } from "./follow.ts";
+import { listMembers, listTitle } from "./members.ts";
 import { readNotifications } from "./notify.ts";
 import { account, snapshot } from "./page.ts";
 import { openRow } from "./trend.ts";
-import { findTweet, readTweets, replyControl, scrollConversation } from "./tweets.ts";
+import { findTweet, readTweets, replyControl, scrollConversation, scrollToEnd } from "./tweets.ts";
 
 // The page adapter. It is bundled on its own and injected into the owned tab;
 // every operation answers `{data}` or `{error}`, and nothing here decides what a
@@ -109,6 +110,10 @@ function execute(operation: string, args: Args): unknown {
 			return confirmButton(args.token ?? "confirm");
 		case "delete.state":
 			return gone(args.tweet_id ?? "");
+		case "list.members":
+			return listMembers();
+		case "list.title":
+			return listTitle();
 		case "trend.open":
 			return openRow(args.index ?? -1);
 		case "notification.list":
@@ -176,6 +181,8 @@ function execute(operation: string, args: Args): unknown {
 				})
 				.filter((row): row is NonNullable<typeof row> => !!row && !!row.topic);
 		}
+		case "page.scroll-end":
+			return scrollToEnd();
 		case "conversation.scroll":
 			return scrollConversation(args.pixels ?? 900);
 		case "cleanup":

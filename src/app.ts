@@ -10,6 +10,7 @@ import { remove, removeMany } from "./operations/delete.ts";
 import { follow } from "./operations/follow.ts";
 import { readShelf, type Shelf } from "./operations/history.ts";
 import { findHot } from "./operations/hot.ts";
+import { followMembers, readMembers } from "./operations/members.ts";
 import { requireSignedIn } from "./operations/navigation.ts";
 import { publish } from "./operations/newpost.ts";
 import { readNotificationsPage } from "./operations/notify.ts";
@@ -151,6 +152,10 @@ export class App {
 					return await readSearch(session, input, signal);
 				case "post.get":
 					return await getStatus(session, id, signal, authorOf(input));
+				case "list.members":
+					return await readMembers(session, input, signal);
+				case "list.follow":
+					return await followMembers(session, input, signal, { store: this.store });
 				case "trend.read":
 					return await readBoard(session, input, signal);
 				case "trend.posts":

@@ -91,6 +91,7 @@ cp -r skills/xx ~/.claude/skills/xx
 | 量这个区、检查自己的草稿 | `xx comment section` · `xx comment check` |
 | 回复、回复某条回复、发新帖 | `xx comment post` · `xx comment reply` · `xx post create` |
 | 点赞、收藏、转发、关注 | `xx post like` · `xx post bookmark` · `xx post repost` · `xx user follow` |
+| 读列表成员 / 逐个关注 | `xx list members` · `xx list follow` |
 | 删自己的帖子（含批量） | `xx comment delete` · `xx comment delete-many` |
 | 读通知、读收藏和喜欢 | `xx notice read` · `xx saved bookmarks` · `xx saved likes` |
 | 查收据、查本地历史 | `xx receipt get` · `xx history list` |
@@ -131,7 +132,7 @@ xx comment post --status <id> --text "…" --request-id reply-<id>-01
 - **判断不归工具。** 没有自动选帖发送的命令，没有生成正文，没有拟人节奏或随机间隔。
 - **登录和数据留在本机。** `~/.xx` 含登录态和操作历史，不应提交或共享。自动化可能触发验证、限流或账号处罚；验证需要真人完成，项目不提供绕过手段。
 
-X 的自动化规则禁止批量、无差别地回复、点赞和关注。工具没有这类命令，也不该手写循环绕过。用这个账号做自动化时，账号简介里应说明这一点和运营者——这是 X 开发者指南的要求。
+用这个账号做自动化时，账号简介里应说明这一点和运营者——这是 X 开发者指南的要求。
 
 ## 给 Agent 接入
 

@@ -110,6 +110,7 @@ Send this to your agent:
 | Measure a section, check a draft against it | `xx comment section` · `xx comment check` |
 | Reply, reply to a reply, publish a post | `xx comment post` · `xx comment reply` · `xx post create` |
 | Like, bookmark, repost, follow | `xx post like` · `xx post bookmark` · `xx post repost` · `xx user follow` |
+| Read a list's members, then follow them one by one | `xx list members` · `xx list follow` |
 | Delete your own posts, singly or in a batch | `xx comment delete` · `xx comment delete-many` |
 | Read notifications, bookmarks and likes | `xx notice read` · `xx saved bookmarks` · `xx saved likes` |
 | Inspect a receipt or the local history | `xx receipt get` · `xx history list` |
@@ -167,10 +168,8 @@ The first run **does not send**: it returns `needs_approval` with the exact text
   trigger verification, rate limits or account penalties; verification is for a
   human, and the project offers no way around it.
 
-X's automation rules prohibit bulk or indiscriminate replying, liking and
-following. There are no commands for that here, and hand-written loops are not a
-workaround. Automated accounts should say so in their profile, naming the
-operator — that is X's developer guideline, not a suggestion.
+Automated accounts should say so in their profile, naming the operator — that
+is X's developer guideline, not a suggestion.
 
 ## For agents
 

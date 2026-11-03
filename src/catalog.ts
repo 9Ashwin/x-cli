@@ -28,6 +28,7 @@ export const GROUPS: Record<string, string> = {
 	status: "Read the page and the signed-in account",
 	notice: "Read who liked, replied to, or followed you",
 	user: "Follow and unfollow an account",
+	list: "Read the accounts on a list",
 	feed: "Read your own recommended timeline",
 	trend: "Read what X is trending on, with nothing searched for",
 	auto: "Rank posts worth replying to, with each section already read",
@@ -375,6 +376,49 @@ export const COMMANDS: CommandSpec[] = [
 		examples: ["xx notice read --limit 30 --scrolls 2"],
 	},
 	{
+		id: "list.members",
+		description: "Read the accounts on a list, with each one's follow state",
+		argument: { key: "resource", name: "list", description: "List URL or numeric id" },
+		flags: [
+			{ key: "limit", name: "--limit <count>", description: "Members to return", type: "number", default: 200 },
+			{
+				key: "scrolls",
+				name: "--scrolls <count>",
+				description: "Scrolls to load more members",
+				type: "number",
+				default: 0,
+			},
+		],
+		effect: "navigation",
+		guidance:
+			"Reads the roster at `/i/lists/<id>/members`. Each member carries the handle and display name, the bio when the cell shows one, `following` as the cell's own button states it (null when the button had not rendered), and `protected` from the lock icon. Nothing is followed: each follow is `user follow --handle <name>`, one account at a time.",
+		examples: ["xx list members https://x.com/i/lists/2105917347391492419 --scrolls 2"],
+	},
+	{
+		id: "list.follow",
+		description: "Follow the members of a list",
+		argument: { key: "resource", name: "list", description: "List URL or numeric id" },
+		flags: [
+			{
+				key: "limit",
+				name: "--limit <count>",
+				description: "Accounts to follow in this run; omit to follow the whole roster",
+				type: "number",
+			},
+			{
+				key: "scrolls",
+				name: "--scrolls <count>",
+				description: "Scrolls used to read the roster first",
+				type: "number",
+				default: 10,
+			},
+		],
+		effect: "account_write",
+		guidance:
+			"Reads the roster, then calls `user follow` once per account: each one opens that profile, matches the button by its numeric id and the handle in its aria-label, and confirms the press by the button changing. Accounts already followed are skipped. A protected account is attempted and produces a follow request rather than a follow; the result marks it `pending`. An account that fails is recorded in `failed` and the run carries on, so one protected profile or one slow page does not end the run. Each followed account gets its own receipt and its own request id (`<--request-id>-<handle>`). Requires --request-id.",
+		examples: ["xx list follow https://x.com/i/lists/2105917347391492419 --request-id lf-01"],
+	},
+	{
 		id: "user.follow",
 		description: "Follow, or unfollow, one account",
 		flags: [
@@ -395,7 +439,7 @@ export const COMMANDS: CommandSpec[] = [
 		],
 		effect: "account_write",
 		guidance:
-			"The control is matched by the numeric id in its test id and by the handle in its aria-label, so a follow button for a suggested account in the sidebar cannot be pressed by mistake. A protected account answers with a confirmation dialog and the result reports pending rather than following. There is no batch follow: X's rules prohibit bulk or indiscriminate following.",
+			"The control is matched by the numeric id in its test id and by the handle in its aria-label, so a follow button for a suggested account in the sidebar cannot be pressed by mistake. A protected account answers with a confirmation dialog and the result reports pending rather than following.",
 		examples: ["xx user follow --handle someone", "xx user follow --handle someone --value false"],
 	},
 	{

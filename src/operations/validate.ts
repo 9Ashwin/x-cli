@@ -42,6 +42,8 @@ export interface Input {
 	// Whether a write must be shown before it is published. Persisted by
 	// browser.configure; false means the account may publish without a first look.
 	review?: boolean;
+	// A list to read members from, by URL or numeric id.
+	list_id?: string;
 	// Days a previously suggested post stays demoted. 0 disables the check.
 	seen_within?: number;
 	// Answer to the posting-pace prompt. It does not grant anything by itself; it
@@ -68,6 +70,7 @@ export function isWrite(operation: string): boolean {
 		"post.repost",
 		"user.follow",
 		"user.unfollow",
+		"list.follow",
 	].includes(operation);
 }
 

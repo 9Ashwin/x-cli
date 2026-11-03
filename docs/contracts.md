@@ -88,6 +88,8 @@ change, and repeating it spends the same time for the same answer.
 | `post create` | account_write | yes |
 | `post like` / `post bookmark` / `post repost` | account_write | yes |
 | `user follow` | account_write | yes |
+| `list members` | navigation | no |
+| `list follow` | account_write | yes |
 | `receipt get` | read | no |
 | `history list` | read | no |
 | `clean` | local | no |

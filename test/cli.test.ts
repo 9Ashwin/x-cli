@@ -24,6 +24,35 @@ test("schema lists commands and exit codes", async () => {
 	assert.equal(payload.data.exit_codes["6"], "uncertain delivery or key conflict");
 });
 
+test("following a roster is a write, and a dry run plans it as one", async () => {
+	const { io, out } = streams();
+	const code = await run(["list", "follow", "2105917347391492419", "--request-id", "lf-1", "--dry-run"], io);
+	assert.equal(code, 0);
+	const payload = JSON.parse(out.join(""));
+	assert.equal(payload.dry_run, true);
+	assert.equal(payload.data.effect, "account_write");
+	assert.equal(payload.data.executed, false);
+});
+
+test("following a roster does not need --confirm", async () => {
+	// The run plans without the flag; what it does is bounded by --limit, not by a
+	// second acknowledgement.
+	const { io, out } = streams();
+	const code = await run(["list", "follow", "2105917347391492419", "--request-id", "lf-2", "--dry-run"], io);
+	assert.equal(code, 0);
+	const payload = JSON.parse(out.join(""));
+	assert.equal(payload.dry_run, true);
+	assert.equal(payload.data.executed, false);
+});
+
+test("following a roster without a request id is refused", async () => {
+	const { io, err } = streams();
+	assert.equal(await run(["list", "follow", "2105917347391492419"], io), 2);
+	const payload = JSON.parse(err.join(""));
+	assert.equal(payload.error.code, "invalid_argument");
+	assert.match(payload.error.message, /--request-id/);
+});
+
 test("a dry run plans a write without a browser", async () => {
 	const { io, out } = streams();
 	const code = await run(

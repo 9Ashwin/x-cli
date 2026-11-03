@@ -301,6 +301,17 @@ export function replyControl(article: HTMLElement): HTMLElement {
 	return controls[0] ?? fail("selector_changed", "This tweet has no reply control");
 }
 
+// A page that renders by virtualization keeps only the rows near the viewport in
+// the DOM, so a small scroll can load one new row and recycle an old one. The
+// roster reader therefore jumps to the bottom and watches the document height
+// rather than counting pixels moved: what matters is whether the page found more
+// rows, not how far it went.
+export function scrollToEnd(): { moved: boolean; height: number; y: number } {
+	const before = window.scrollY;
+	window.scrollTo(0, document.documentElement.scrollHeight);
+	return { moved: window.scrollY !== before, height: document.documentElement.scrollHeight, y: window.scrollY };
+}
+
 export function scrollConversation(pixels: number): { moved: boolean; height: number } {
 	const before = window.scrollY;
 	window.scrollBy(0, pixels);
