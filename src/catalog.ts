@@ -172,19 +172,116 @@ export const COMMANDS: CommandSpec[] = [
 	},
 	{
 		id: "trend.read",
-		description: "Read what X is trending on",
+		description: "Read the Explore board: trending topics and today's stories",
 		flags: [
+			{
+				key: "tab",
+				name: "--tab <name>",
+				description: "trending, news, sports or entertainment",
+				type: "string",
+				default: "trending",
+			},
 			{
 				key: "limit",
 				name: "--limit <count>",
-				description: "Maximum topics to return (default 20)",
+				description: "Maximum entries to return (default 20)",
 				type: "number",
 			},
 		],
 		effect: "navigation",
 		guidance:
-			"The board as X orders and localizes it, with promoted entries excluded. An entry is a topic, not a post: pass the topic to `search keyword --query` to read the posts under it. This command does not translate, classify or re-rank what the board shows.",
-		examples: ["x-cli trend read --limit 20"],
+			"An entry is a topic or a story, never a post. Trending returns ranked words with a category; news, sports and entertainment return one-line stories with an age and a post count. A row carries no id of its own — X opens the topic page from a click handler — so `trend posts --index <row_index> --tab <same tab>` reopens the tab, clicks that row and follows it to the posts, which is where the engagement is. `--topic <id>` works when you already have the numeric id. This needs no search term, which is what separates it from `search hot`. Promoted entries are excluded so the ranks stay as X numbered them.",
+		examples: ["x-cli trend read --tab news", "x-cli trend read --tab trending --limit 30"],
+	},
+	{
+		id: "trend.posts",
+		description: "Read the posts under one Explore entry",
+		flags: [
+			{
+				key: "topic",
+				name: "--topic <id>",
+				description: "Numeric topic_id, when you already have one",
+				type: "string",
+			},
+			{
+				key: "index",
+				name: "--index <n>",
+				description: "row_index from trend read; opens that row and follows it",
+				type: "number",
+			},
+			{
+				key: "tab",
+				name: "--tab <name>",
+				description: "Which board --index refers to",
+				type: "string",
+				default: "trending",
+			},
+			{ key: "limit", name: "--limit <count>", description: "Maximum posts returned (default 20)", type: "number" },
+		],
+		effect: "navigation",
+		guidance:
+			"The board row carries no id — X opens the topic page from a click handler, so the id only exists after the row is opened. Pass --index with a row_index from trend read and the command does the click and follows it, or --topic when you already have the id. The topic page is where the actual posts are, with full engagement from each card's summary label. Order is X's own ranking of the topic, which mixes recency and engagement. `items[].id` goes straight into comment list, comment section or comment post.",
+		examples: ["x-cli trend posts --index 1 --tab news --limit 10", "x-cli trend posts --topic 2117540022039552439"],
+	},
+	{
+		id: "auto.suggest",
+		description: "Rank posts worth replying to, with the section already read",
+		flags: [
+			{
+				key: "source",
+				name: "--source <list>",
+				description: "timeline, trend, search — comma separated",
+				type: "string",
+				default: "timeline,trend,search",
+			},
+			{
+				key: "query",
+				name: "--query <text>",
+				description: "Topic for the search source",
+				type: "string",
+			},
+			{
+				key: "goal",
+				name: "--goal <name>",
+				description: "reply, reach or conversation",
+				type: "string",
+				default: "reply",
+			},
+			{
+				key: "limit",
+				name: "--limit <count>",
+				description: "Posts to consider per source before ranking",
+				type: "number",
+			},
+			{
+				key: "scrolls",
+				name: "--scrolls <count>",
+				description: "Scrolls used to read each candidate's replies",
+				type: "number",
+				default: 2,
+			},
+			{
+				key: "section_limit",
+				name: "--section-limit <count>",
+				description: "Replies read per candidate when measuring its section",
+				type: "number",
+				default: 40,
+			},
+			{
+				key: "language",
+				name: "--language <code>",
+				description: "Language filter for the search and trend sources",
+				type: "string",
+			},
+		],
+		effect: "navigation",
+		guidance:
+			"The one command that answers \"where should I reply\". It gathers posts from three sources — the home timeline, the Trending board used as search terms, and an optional keyword search — then opens each candidate's own conversation and measures it, so the ranking is not just engagement. `--goal reach` favours posts many people will see; `--goal reply` favours posts where each reply gets attention (views per reply); `--goal conversation` favours sections that have not already filled up with substance. Each candidate comes back with its section profile, the numbers the ranking used, a one-line `why`, and `angles` pointing at what is actually in the post. It never writes a reply, never picks what to say, and never sends anything — the writing is the caller's, and `comment check` measures the result against the same section. At most 8 candidates are opened because each costs a navigation; the rest are ranked but unmeasured.",
+		examples: [
+			"x-cli auto suggest",
+			'x-cli auto suggest --source search --query "AI agent" --goal reply',
+			"x-cli auto suggest --goal conversation --section-limit 60",
+		],
 	},
 	{
 		id: "search.hot",

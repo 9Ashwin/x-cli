@@ -11,3 +11,4 @@ tasks/
 
 # Skill evaluation workspace: outputs and timing from local runs.
 x-workspace/
+tmp/

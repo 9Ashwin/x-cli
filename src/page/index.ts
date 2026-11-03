@@ -11,6 +11,7 @@ import {
 } from "./follow.ts";
 import { readNotifications } from "./notify.ts";
 import { account, snapshot } from "./page.ts";
+import { openRow } from "./trend.ts";
 import { findTweet, readTweets, replyControl, scrollConversation } from "./tweets.ts";
 
 // The page adapter. It is bundled on its own and injected into the owned tab;
@@ -23,6 +24,8 @@ interface Args extends Partial<ArmArgs> {
 	action?: string;
 	wanted?: boolean;
 	handle?: string;
+	index?: number;
+	tab?: string;
 	pixels?: number;
 	include_text?: boolean;
 	token?: string;
@@ -106,36 +109,64 @@ function execute(operation: string, args: Args): unknown {
 			return confirmButton(args.token ?? "confirm");
 		case "delete.state":
 			return gone(args.tweet_id ?? "");
+		case "trend.open":
+			return openRow(args.index ?? -1);
 		case "notification.list":
 			return readNotifications();
 		case "trend.list": {
-			// Each row is a role=link with the rank, a category line, the topic, and
-			// sometimes related terms. The topic is the longest short leaf; rank is
-			// the leading number, which only some rows carry.
+			// The four Explore tabs render the same `trend` row shape but say different
+			// things in it. Trending: rank, category, topic. News/Sports/Entertainment:
+			// a title, an age, a category and a post count. One reader handles both by
+			// reading the meta line rather than assuming which tab it is.
 			const rows = findRendered<HTMLElement>(document, '[data-testid="trend"]');
+			const tab = args.tab ?? "trending";
 			return rows
 				.map((row) => {
 					const leaves = [...row.querySelectorAll("span")]
 						.map((span) => clean(span.textContent))
 						.filter((text) => text && text !== "·");
+					// A promoted entry is an ad, not a topic. It is dropped rather than
+					// numbered, so the ranks stay the ones X printed.
+					if (/Promoted|推广|广告/i.test(clean(row.textContent))) return null;
 					const rankText = /^\d{1,3}$/.test(leaves[0] ?? "") ? leaves[0] : null;
 					const meta =
-						leaves.find((text) => /Trending|Trend/i.test(text) && text.includes("·")) ??
+						leaves.find(
+							(text) => text.includes("·") && /Trending|News|Sports|Entertainment|热门|新闻|体育|娱乐/i.test(text),
+						) ??
 						leaves.find((text) => text.includes("·")) ??
 						"";
 					const rest = leaves.filter((text) => text !== rankText && text !== meta);
-					const promoted = /Promoted/i.test(clean(row.textContent));
-					const href = row.querySelector('a[href*="search"]')?.getAttribute("href") ?? null;
+					// The meta line of a story tab reads "17 hours ago · News · 4.8K posts".
+					const postMatch = /([\d.,]+)\s*([KkMm])?\s*posts?/i.exec(meta);
+					const posts = postMatch
+						? Math.round(
+								Number.parseFloat(postMatch[1].replace(/,/g, "")) *
+									(postMatch[2]?.toUpperCase() === "K" ? 1000 : postMatch[2]?.toUpperCase() === "M" ? 1_000_000 : 1),
+							)
+						: null;
+					const age =
+						/^(\d+ (?:second|minute|hour|day|week)s? ago|\d+[小时天周]前|刚刚|Trending now|正在热门)$/i.exec(
+							meta.split("·")[0]?.trim() ?? "",
+						)?.[0] ?? null;
+					const href = row.querySelector('a[href*="/i/trending/"],a[href*="search"]')?.getAttribute("href") ?? null;
+					const topicID = href ? (/\/i\/trending\/(\d{1,25})/.exec(href)?.[1] ?? null) : null;
 					return {
+						tab,
 						rank: rankText ? Number(rankText) : null,
+						// The row carries no href and no id of its own: X opens the topic
+						// page from a click handler. The index is what a later call can name
+						// the row by, so it is recorded here while the board is on screen.
+						row_index: rows.indexOf(row),
 						meta,
 						topic: rest[0] ?? "",
 						context: rest.length > 1 ? rest.slice(1).join(" | ") : null,
+						posts,
+						age,
+						topic_id: topicID,
 						url: href,
-						already_promoted: promoted,
 					};
 				})
-				.filter((row: { topic: string; already_promoted: boolean }) => row.topic && !row.already_promoted);
+				.filter((row): row is NonNullable<typeof row> => !!row && !!row.topic);
 		}
 		case "conversation.scroll":
 			return scrollConversation(args.pixels ?? 900);

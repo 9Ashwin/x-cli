@@ -39,6 +39,14 @@ test("the bookmark and view counts are not lost when the label is unusual", () =
 });
 
 test("a missing label is nulls, not zeroes", () => {
+	// A card can render before its summary label does. The reader must report the
+	// absence rather than a zero — a post with 0 views and one whose views the page
+	// had not printed yet look identical if both become 0, and the second one then
+	// ranks last for no reason.
+	const pending = parseEngagement("");
+	assert.equal(pending.views, null);
+	assert.equal(pending.likes, null);
+
 	assert.deepEqual(parseEngagement(null), {
 		likes: null,
 		replies: null,

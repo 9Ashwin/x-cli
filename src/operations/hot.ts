@@ -83,57 +83,6 @@ export function hotQuery(input: Input): string {
 	return parts.join(" ");
 }
 
-// What X says is trending, with no query at all. This is the board, not a
-// search: an entry names a topic and is a link to that topic's posts. Reading it
-// is the "what is everyone talking about" question, which a keyword search cannot
-// answer — a search only returns what was asked for.
-export interface Trend {
-	rank: number | null;
-	// "Sports · Trending", "Politics · Trending", "Only on X · Trending". The page
-	// states the category; it is reported rather than classified here.
-	meta: string;
-	topic: string;
-	context: string | null;
-	url: string | null;
-	already_promoted: boolean;
-}
-
-export interface TrendResult {
-	topics: Trend[];
-	scope: "loaded_dom";
-	complete: false;
-	limits: string[];
-}
-
-export async function readTrending(session: Session, input: Input): Promise<TrendResult> {
-	await session.tab.goto("https://x.com/explore/tabs/trending", { waitUntil: "domcontentloaded" });
-	const state = await session.status();
-	if (state.login_required)
-		throw new CliError("login_required", "X requires a signed-in session", { hint: "Run x-cli auth login." });
-	if (state.verification_required)
-		throw new CliError("verification_required", "X is asking for human verification", {
-			hint: "Complete it in headed Chrome, then run auth status.",
-		});
-	const limit = Math.min(Math.max(input.limit ?? 20, 1), 100);
-	// The board renders a few seconds after the shell; reading immediately returned
-	// an empty list on a page that had thirty topics a moment later.
-	let topics: Trend[] = [];
-	for (let attempt = 0; attempt < 30 && !topics.length; attempt++) {
-		topics = await session.call<Trend[]>("trend.list");
-		if (!topics.length) await new Promise((resolve) => setTimeout(resolve, 400));
-	}
-	return {
-		topics: topics.slice(0, limit),
-		scope: "loaded_dom",
-		complete: false,
-		limits: [
-			"The board is ordered and localized by X. This command does not translate, classify or re-rank it.",
-			"An entry is a topic, not a post: pass its topic with `search keyword --query` to read posts under it.",
-			"Promoted entries are excluded and the count is not folded into rank, so rank stays X's own.",
-		],
-	};
-}
-
 export async function findHot(session: Session, input: Input, signal: AbortSignal): Promise<HotResult> {
 	const search = hotQuery(input);
 	await session.tab.goto(searchUrl(search), { waitUntil: "domcontentloaded" });
@@ -169,13 +118,32 @@ export async function findHot(session: Session, input: Input, signal: AbortSigna
 			});
 		});
 	};
-	// The results render after the shell; a poll is a wait, not a retry of the
-	// search itself.
-	for (let attempt = 0; attempt < 30 && !collected.size; attempt++) {
+	// The results render after the shell, and a card can exist before its summary
+	// label does — the skeleton row has the author and text but no counts. Waiting
+	// only for a row therefore returned a full list of posts with every engagement
+	// number null, and since the scroll loop below stops once the list is at the
+	// limit, those nulls were never corrected. The wait is for a row that actually
+	// carries counts.
+	const labelled = async () => {
+		let rows: (TweetRow & { engagement_label?: string | null })[] = [];
+		try {
+			rows = await session.call<(TweetRow & { engagement_label?: string | null })[]>("tweet.list", {
+				engagement: true,
+			});
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : "";
+			if (!/Execution context|context was destroyed|Target closed|navigat/i.test(message)) throw error;
+		}
+		return rows.some((row) => !row.promoted && (row.engagement_label ?? "").trim().length > 0);
+	};
+	for (let attempt = 0; attempt < 40 && !(collected.size > 0 && (await labelled())); attempt++) {
 		signal.throwIfAborted();
 		await read();
-		if (!collected.size) await new Promise((resolve) => setTimeout(resolve, 500));
+		await new Promise((resolve) => setTimeout(resolve, 500));
 	}
+	// One more pass, so the last rows read are the ones with labels rather than the
+	// skeleton versions the first poll may have captured.
+	await read();
 	const scrolls = Math.min(Math.max(input.scrolls ?? 0, 0), 20);
 	for (let done = 0; done < scrolls && collected.size < limit; done++) {
 		signal.throwIfAborted();

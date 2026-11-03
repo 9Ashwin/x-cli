@@ -32,6 +32,39 @@ x-cli auth status
 
 **Google 登录会被拒**，页面写「此浏览器或应用可能不安全」。那是调试端口被识破，不是账号问题。用 `x-cli auth login --manual`：它关掉自动化浏览器，用同一个 profile 开一个**不带调试端口**的窗口，等主人关窗口后把登录态读回来。
 
+## 最省事的一步：`auto suggest`
+
+如果主人说「找几条值得回的」「自动去热帖评论」，先跑这个，不要从 `feed read` 一条条翻。
+
+```bash
+x-cli auto suggest --goal reply --limit 20
+x-cli auto suggest --source search --query "AI agent" --goal reply
+x-cli auto suggest --source trend --goal reach
+```
+
+它一次做完三件事：从时间线 / 热榜词 / 关键词收集候选 → 按「每条回复还能分到多少注意力」预排 → **打开前 8 条各自的会话，把区量出来**。
+
+每条候选给你：
+
+| 字段 | 是什么 | 怎么用 |
+| --- | --- | --- |
+| `engagement` | likes/replies/reposts/bookmarks/views | 判断体量 |
+| `section` | 这个区的长度中位数、多少条有空话、拿到赞的回复长什么样 | 决定写多长、写多具体 |
+| `signals.attention_per_reply` | 浏览数 ÷ 回复数 | 越高说明回复越有人看 |
+| `signals.section_substance` | 区里有立场的回复占比 | 越低说明越有空位 |
+| `why` | 它为什么排在这 | 别猜排序逻辑，看这个 |
+| `angles` | 帖子里已有的可切入点 | **线索，不是草稿** |
+
+`--goal`：
+
+- `reach`（默认）— 按浏览量。要曝光就这个。
+- `reply` — 按每条回复分到的注意力。**大多数时候这个是你要的**：5 万浏览 3 条回复，比 50 万浏览 5000 条回复更值得回。
+- `conversation` — 偏爱还没被具体发言填满的区。
+
+**`angles` 不是回复草稿。** 它是「这条帖子里有什么可说的」，你要自己读原帖、形成立场再写。把 `angles` 原样贴出去就是最典型的空话。
+
+`auto suggest` 不写正文、不发送。发送还是 `comment post`。
+
 ## 三条找内容的路径，别混用
 
 它们回答的是三个不同的问题，混在一起会答错。
@@ -39,6 +72,7 @@ x-cli auth status
 ```bash
 x-cli feed read --limit 20 --scrolls 2              # 1. 我的推荐流里现在有什么
 x-cli trend read --limit 20                          # 2. 全网在聊什么（不用我先想到词）
+x-cli trend posts --index 0 --tab news --limit 10    # 2b. 这个话题下现在最热的帖
 x-cli search keyword --query "AI agent" --limit 20   # 3. 我知道要找什么
 x-cli search hot --query "AI agent" --language zh --min-likes 500   # 3b. 这个词下最热的帖
 ```
@@ -47,10 +81,13 @@ x-cli search hot --query "AI agent" --language zh --min-likes 500   # 3b. 这个
 | --- | --- | --- |
 | 我关注的人/算法推给我什么 | `feed read` | 帖子 |
 | 现在什么话题在涨 | `trend read` | **话题**，不是帖子 |
+| 这个话题下哪几条帖子在被读 | `trend posts --index <row_index>` | 帖子 + 完整互动数 |
 | 关键词下有什么 | `search keyword` | 帖子，最新优先 |
 | 关键词下哪几条被讨论得最多 | `search hot` | 帖子 + 完整互动数，按 X 的 Top 排 |
 
-`trend read` 返回的是话题（如 `Sports · Trending | Draymond`）。要读话题下面的帖子，再把话题丢给 `search keyword` —— 这一步不能省，话题不是帖子。
+`trend read` 返回的是话题（如 `Sports · Trending | Draymond`），不是帖子，也没有 id —— X 用点击事件打开话题页，id 只有打开后才存在。所以每条带一个 `row_index`：`trend posts --index <row_index> --tab <同一个 tab>` 会重开那个 tab、点开这一行、跟着跳到帖子页。`--tab` 必须和 `trend read` 时一致，否则点到的是另一条。
+
+四个 tab 不是一回事：`trending` 是排好序的关键词，`news` / `sports` / `entertainment` 是一行一行的新闻，带时间和帖子数。**两个方向都能用**：先按话题找帖，或者直接看新闻下的帖。
 
 `search hot` 会拼 X 自己的运算符（`lang:` `min_faves:` `min_replies:` `since:`），排序是 X 的 Top 标签给的，不是我重排的。
 

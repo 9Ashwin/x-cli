@@ -27,11 +27,17 @@ export interface Input {
 	handle?: string;
 	// "all" or "mentions" for notice read.
 	tab?: string;
+	topic?: string;
+	index?: number;
 	language?: string;
 	min_likes?: number;
 	min_replies?: number;
 	since?: string;
 	draft?: string;
+	// Where `auto suggest` looks, and what it optimizes for.
+	source?: string;
+	goal?: string;
+	section_limit?: number;
 	// Answer to the posting-pace prompt. It does not grant anything by itself; it
 	// records that the caller was shown the count and chose to continue.
 	confirm?: boolean;

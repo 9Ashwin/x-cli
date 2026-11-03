@@ -4,11 +4,12 @@ import { COMMANDS } from "./catalog.ts";
 import { CliError } from "./errors.ts";
 import { apply } from "./operations/actions.ts";
 import { authStatus, openLogin } from "./operations/auth.ts";
+import { suggest } from "./operations/auto.ts";
 import { getComment, listComments, scrollConversation } from "./operations/comments.ts";
 import { remove, removeMany } from "./operations/delete.ts";
 import { follow } from "./operations/follow.ts";
 import { readShelf, type Shelf } from "./operations/history.ts";
-import { findHot, readTrending } from "./operations/hot.ts";
+import { findHot } from "./operations/hot.ts";
 import { requireSignedIn } from "./operations/navigation.ts";
 import { publish } from "./operations/newpost.ts";
 import { readNotificationsPage } from "./operations/notify.ts";
@@ -16,6 +17,7 @@ import { measurePace, pacePrompt } from "./operations/pace.ts";
 import { checkDraft, profileSection } from "./operations/section.ts";
 import { readSearch, readTimeline } from "./operations/sources.ts";
 import { getStatus } from "./operations/thread.ts";
+import { readBoard, readTopic } from "./operations/trend.ts";
 import { authorOf, type Input, isWrite, statusID, validateTarget, validateText } from "./operations/validate.ts";
 import { send } from "./operations/write.ts";
 import type { Reproduce } from "./progress.ts";
@@ -125,9 +127,13 @@ export class App {
 				case "post.get":
 					return await getStatus(session, id, signal, authorOf(input));
 				case "trend.read":
-					return await readTrending(session, input);
+					return await readBoard(session, input, signal);
+				case "trend.posts":
+					return await readTopic(session, input, signal);
 				case "search.hot":
 					return await findHot(session, input, signal);
+				case "auto.suggest":
+					return await suggest(session, input, signal);
 				case "notice.read":
 					return await readNotificationsPage(session, input, signal);
 				case "user.follow": {
