@@ -466,7 +466,7 @@ export const COMMANDS: CommandSpec[] = [
 		],
 		effect: "navigation",
 		guidance:
-			"Returns the section's reply-length quartiles, how many ask questions, which replies lead on likes, and a shape count of how many carry a point versus generic praise. `led` is the most-liked replies in the loaded window, not a ranking of the section. This describes the window X chose to show; it is not a sample, and it says so.",
+			"Returns the section's reply-length quartiles, how many ask questions, which replies lead on likes, and a shape count of how many carry a point versus generic praise. `led` is the most-liked replies in the loaded window, not a ranking of the section. `subject` labels each reply as `about_work`, `about_self`, `asking` or `spam` — what a reply points at, which is what makes quoting one safe or not — and reports the section's mix. This describes the window X chose to show; it is not a sample, and it says so.",
 		examples: ["x-cli comment section --status 1234567890 --scrolls 3"],
 	},
 	{
@@ -491,7 +491,7 @@ export const COMMANDS: CommandSpec[] = [
 		],
 		effect: "navigation",
 		guidance:
-			"Reads the section, then measures the draft against it: length band, whether it names anything specific, whether it speaks from the writer's own position, and how much of it is praise vocabulary that would fit any post. It is a report, not a gate — it never rewrites the text and never blocks a send. Passing it does not mean the reply is good, and failing it does not mean it is bad; it means the draft has the shape of the thing it warns about.",
+			"Reads the section, then measures the draft against it: length band, whether it names anything specific, whether it speaks from the writer's own position, and how much of it is praise vocabulary that would fit any post. It also compares the draft with the confirmed replies in this machine's own log and reports `sameness` — whether openings, endings and lengths are converging on one shape. `template` means change the angle, not the words. It is a report, not a gate — it never rewrites the text and never blocks a send. Passing it does not mean the reply is good, and failing it does not mean it is bad; it means the draft has the shape of the thing it warns about.",
 		examples: ['x-cli comment check --status 1234567890 --draft "…"'],
 	},
 	{

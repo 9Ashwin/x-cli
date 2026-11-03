@@ -1,4 +1,5 @@
-import type { TweetRow } from "./comments.ts";
+import type { RowWithStance, TweetRow } from "./comments.ts";
+import { mixOf, readStance, type StanceMix, type StanceReading } from "./stance.ts";
 import { measureWit, type Wit } from "./wit.ts";
 
 // What a reply would have to sound like to belong in this conversation.
@@ -24,6 +25,12 @@ export interface SectionProfile {
 	shape: { "has-a-point": number; flat: number; "generic-praise": number };
 	// Reply length that drew at least one like, when any did.
 	liked: { count: number; median_length: number | null };
+	// What the section is actually talking about. A section that is mostly about
+	// the writers themselves is not a discussion of the post, and the two need
+	// different replies.
+	subject: StanceMix;
+	// The single most-liked reply, with its label, when the page printed likes.
+	top: { id: string; text: string; likes: number | null; stance: StanceReading } | null;
 }
 
 function quantile(sorted: number[], q: number): number {
@@ -66,6 +73,21 @@ export function profileSection(rows: TweetRow[]): SectionProfile {
 			})),
 		shape,
 		liked: { count: likedRows.length, median_length: likedLengths.length ? quantile(likedLengths, 0.5) : null },
+		// Rows from `comment list` already carry a stance; anything else is
+		// labelled here rather than left out, so the mix is over the whole window.
+		subject: mixOf(rows.map((row) => ("stance" in row ? (row as RowWithStance).stance : readStance(row.text)))),
+		top: (() => {
+			const best = rows
+				.filter((row) => (row.likes ?? 0) > 0 && row.text.trim())
+				.sort((left, right) => (right.likes ?? 0) - (left.likes ?? 0))[0];
+			if (!best) return null;
+			return {
+				id: best.id,
+				text: best.text.slice(0, 240),
+				likes: best.likes,
+				stance: "stance" in best ? (best as RowWithStance).stance : readStance(best.text),
+			};
+		})(),
 	};
 }
 

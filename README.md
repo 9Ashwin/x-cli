@@ -25,8 +25,8 @@ ids, and a refusal instead of a guess whenever the page disagrees.
 | `x-cli comment list` | The replies the page has rendered under a status |
 | `x-cli comment get` | One reply plus the status it answers |
 | `x-cli post get` | One status, without its replies |
-| `x-cli comment section` | What this section's replies are like, and what drew a reaction |
-| `x-cli comment check` | Measure a draft against the section it would join |
+| `x-cli comment section` | What this section's replies are like, what drew a reaction, and what they are about |
+| `x-cli comment check` | Measure a draft against the section, and against what you already wrote |
 
 **Writing**
 
@@ -209,6 +209,15 @@ That gap is the point. Choosing which post to answer and writing what to say are
 judgement calls, and judgement in a CLI is judgement nobody can ask about. If the
 tool picked the target, "why this post" would have no answer; if it wrote the
 text, "what does it mean" would have none either.
+
+Two measurements aim at the same failure from different sides. `comment section`
+labels every reply `about_work`, `about_self`, `asking` or `spam`, because
+quoting "agreed" under a reply that is actually about the writer's own situation
+reads as nobody having read the section. `comment check` compares a draft with
+the confirmed replies in this machine's own log and reports `sameness` —
+`varied`, `narrowing` or `template` — because a draft can pass every per-draft
+check and still be the fifth time the same opening was used. `template` is not a
+prompt to change a synonym; it is a prompt to change the angle.
 
 `auto suggest` narrows the first half without closing it: it ranks candidates and
 reports the numbers it used (`signals`), the reason each is where it is (`why`),

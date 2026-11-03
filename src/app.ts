@@ -14,6 +14,7 @@ import { requireSignedIn } from "./operations/navigation.ts";
 import { publish } from "./operations/newpost.ts";
 import { readNotificationsPage } from "./operations/notify.ts";
 import { measurePace, pacePrompt } from "./operations/pace.ts";
+import { measureSameness } from "./operations/sameness.ts";
 import { checkDraft, profileSection } from "./operations/section.ts";
 import { readSearch, readTimeline } from "./operations/sources.ts";
 import { getStatus } from "./operations/thread.ts";
@@ -184,12 +185,29 @@ export class App {
 							...listed.limits,
 							"A profile of the loaded window, not of the conversation: X chose which replies to show and in what order.",
 							"`led` sorts the loaded replies by likes. That is not the page's own order and not a ranking of the section.",
+							"`subject` labels each reply as about the post, about the writer, asking, or selling. It is read from wording: a reply can name the subject and still be about itself.",
 						],
 					};
 				}
 				case "comment.check": {
 					const listed = await listComments(session, input, id, signal);
 					const profile = profileSection(listed.items);
+					// What this account already said lives on this machine, not on the
+					// page: a draft can be fine in isolation and still be the fifth time
+					// the same opening was used. That is only visible against the log.
+					const written = await this.store
+						.events()
+						.then((events) =>
+							events
+								.filter(
+									(event) =>
+										(event.operation === "comment.post" || event.operation === "comment.reply") &&
+										typeof (event.data as { text?: unknown })?.text === "string",
+								)
+								.map((event) => (event.data as { text: string }).text)
+								.reverse(),
+						)
+						.catch(() => [] as string[]);
 					return {
 						status_id: id,
 						scope: listed.scope,
@@ -197,10 +215,15 @@ export class App {
 						sampled: listed.items.length,
 						section: profile,
 						check: checkDraft(input.draft ?? "", profile),
+						// The draft is compared against the same measure, including itself:
+						// a draft that is the fifth variation of what was already said is
+						// exactly what this is for.
+						sameness: measureSameness([input.draft ?? "", ...written]),
 						limits: [
 							"Measured against the replies the page rendered, which is a window rather than a sample.",
 							"A report, not a gate: passing does not make a reply good, and failing does not make it bad.",
 							"This says nothing about whether the facts in the draft are right.",
+							"`sameness` compares this draft with the confirmed replies in this machine's own log — openings, endings and lengths. It cannot tell whether two replies mean the same thing.",
 						],
 					};
 				}

@@ -2,6 +2,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import type { Session } from "../browser.ts";
 import { CliError } from "../errors.ts";
 import { openStatus } from "./navigation.ts";
+import { readStance, type StanceReading } from "./stance.ts";
 import { authorOf, type Input } from "./validate.ts";
 
 // Reading a conversation.
@@ -33,10 +34,16 @@ export interface TweetRow {
 	author_link?: string | null;
 }
 
+// A reply plus what it is talking about. The label is what makes a section
+// readable: quoting "agreed" under a reply that is actually about the writer's
+// own situation is a mismatch, and the section's mix says whether the post is
+// being discussed at all.
+export type RowWithStance = TweetRow & { stance: StanceReading };
+
 export interface ListResult {
 	status_id: string;
 	root: TweetRow | null;
-	items: TweetRow[];
+	items: RowWithStance[];
 	scope: "loaded_dom";
 	complete: false;
 	scrolls: number;
@@ -84,7 +91,10 @@ export async function listComments(
 	// Promoted replies ride in the same list as real ones. They are ads with their
 	// own like counts, and leaving them in made a section read as if its loudest
 	// agreement came from an advertiser.
-	const replies = rows.filter((row) => row.id !== root?.id && !row.promoted).slice(0, limit);
+	const replies = rows
+		.filter((row) => row.id !== root?.id && !row.promoted)
+		.slice(0, limit)
+		.map((row) => ({ ...row, stance: readStance(row.text) }));
 	return {
 		status_id: id,
 		root,
@@ -96,6 +106,7 @@ export async function listComments(
 			"Only replies the page has rendered are returned. X loads more as the conversation scrolls, so an empty list means nothing loaded, not that nobody replied.",
 			"X may hide replies the author has restricted or that its ranking kept further down; this command does not remove that ordering.",
 			"A thread can contain replies to replies. `depth` is 1 for a tweet drawn under another, 0 for one drawn at the top level.",
+			"`stance` is read from wording, not meaning: a reply can name the subject and still be about itself. `signals` shows the phrases it was decided from.",
 		],
 	};
 }
