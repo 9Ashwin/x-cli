@@ -157,8 +157,45 @@ function kindOf(article: Element): "post" | "repost" | "reply" {
 	return "post";
 }
 
+// An Article card has no `tweetText`. X renders its headline and standfirst as
+// plain spans in the card body, so a reader that only looks for `tweetText`
+// returns an empty string for every long-form post — four of five bookmarks in
+// one account, which then look like blank entries rather than like articles.
+//
+// The body is read from the card's own text, minus the parts that are not the
+// body: the name block, the social context line, the "Article" word, the action
+// counts. That is a fallback, not a replacement: `tweetText` is exact when it is
+// there, and the fallback only runs when it is not.
 function textOf(article: Element): string {
-	return clean(article.querySelector(TEXT)?.textContent);
+	const exact = clean(article.querySelector(TEXT)?.textContent);
+	if (exact) return exact;
+	return articleBody(article);
+}
+
+const INTERACTION = /^[\d.,]+\s*[KkMm]?$/;
+
+function articleBody(article: Element): string {
+	const name = clean(article.querySelector(USER_NAME)?.textContent);
+	const context = clean(article.querySelector('[data-testid="socialContext"]')?.textContent);
+	// Every leaf span outside the name block. The body is what is left after the
+	// label, the byline and the counters are removed; the card's own `innerText`
+	// cannot be used because it interleaves those with the body.
+	const leaves = [...article.querySelectorAll("span")]
+		.filter((span) => span.children.length === 0)
+		.filter((span) => !span.closest(USER_NAME))
+		.map((span) => clean(span.textContent))
+		.filter(Boolean);
+	const kept = leaves.filter((leaf) => {
+		if (leaf === "Article" || leaf === "长文" || leaf === "文") return false;
+		if (INTERACTION.test(leaf)) return false;
+		if (context && leaf === context) return false;
+		if (name && leaf === name) return false;
+		if (leaf === "·") return false;
+		return true;
+	});
+	// Consecutive identical leaves are the same text rendered twice for layout
+	// (X does this for the headline), so they are collapsed.
+	return clean(kept.filter((leaf, index) => leaf !== kept[index - 1]).join(" "));
 }
 
 // A promoted tweet. Two independent signals, because either can be missing:
