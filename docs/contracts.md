@@ -174,10 +174,17 @@ A send returns:
   "result": { "evidence": "toast", "reply_to": { "tweet_id": "…", "handle": "…" } } }
 ```
 
-`evidence` is `toast` (X's own success message) or `new_row` (a tweet carrying
-the exact text appeared). With neither, the command fails with
-`delivery_uncertain` and the receipt records `uncertainty_reason`:
-`composer_still_open` or `no_delivery_evidence`.
+`evidence` is `toast` (X's own success message) or `new_row`. `new_row` requires
+three things at once: the row's status id was not on the page when the command
+started typing, its text is exactly what was typed, and its article says this
+account wrote it. Text alone is not evidence — a page can load an older row that
+somebody else wrote, and matching on text confirmed sends that never happened.
+
+With neither, the command fails with `delivery_uncertain` and the receipt records
+`uncertainty_reason`: `composer_still_open`, `composer_closed_without_new_row`,
+`new_row_by_another_account`, or `no_delivery_evidence`. A composer that closes
+without leaving a new row is **not** success: X closes it on success, and it also
+closes it when the send is rejected or the owner presses Escape.
 
 **A `delivery_uncertain` reply is never resent automatically.** It may be out.
 

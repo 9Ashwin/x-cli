@@ -21,6 +21,20 @@ src/
     navigation.ts     opening a status and waiting for it to settle
     comments.ts       reading a conversation (bounded DOM window)
     write.ts          the reply send path, receipt contract, confirmation
+    newpost.ts        publishing a new post (the same composer, opposite check)
+    auto.ts           collecting candidates and ranking them by room to reply
+    hot.ts            engagement parsing and X's own Top-tab search
+    trend.ts          the Explore board and the posts under one entry
+    section.ts        measuring a section, and a draft against it
+    wit.ts            does a draft name anything, take a position, or just praise
+    stance.ts         what a reply is talking about (about_work / about_self / ...)
+    sameness.ts       whether the replies written so far share one shape
+    seen.ts           which posts were already suggested
+    delete.ts         removing an owned post, with ownership proved
+    follow.ts         follow and unfollow
+    actions.ts        like, bookmark, repost
+    notify.ts         reading the notification page
+    history.ts        saved bookmarks and likes
     auth.ts           sign-in state and the login window
   page/               the page adapter: bundled to dist/page-adapter.js
     index.ts          operation dispatcher injected into the tab
@@ -28,6 +42,11 @@ src/
     tweets.ts         reading <article data-testid="tweet"> records
     composer.ts       the reply composer, its guard, and write-result evidence
     dom.ts            measurement helpers: rendered(), point(), one()
+    trend.ts          opening one Explore row by position
+    follow.ts         the follow control and its confirmation dialog
+    delete.ts         caret, menu item and confirmation sheet
+    actions.ts        the like/bookmark/repost toggles
+    notify.ts         classifying notification rows
 ```
 
 ## The two halves
@@ -60,7 +79,10 @@ catalog.comment.post
   -> reply.arm-write      re-check the text and target, arm post with a guard
   -> receipt: dispatching
   -> click post           the guard can still refuse at press time
-  -> reply.result         toast or new row = evidence; repeated twice
+  -> reply.result         a toast, or a row that was not on the page before the
+                          press, carries exactly this text, and says this account
+                          wrote it; the same answer twice. Anything else is
+                          delivery_uncertain — a closed modal is not proof
   -> receipt: confirmed | delivery_uncertain
 ```
 
