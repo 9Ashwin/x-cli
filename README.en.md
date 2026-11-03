@@ -41,12 +41,12 @@ always two steps.
 You need **Node.js 22.19+, Chrome, and an agent that can run shell commands**.
 
 The skill lives in `skills/xx/`, in the layout Agent Skills expects, so
-`npx skills add <repo> --skill xx` installs it directly.
+`npx skills add https://github.com/9Ashwin/x-cli --skill xx` installs it directly.
 
 ### 1. Install
 
 ```bash
-git clone <repo> && cd xx
+git clone https://github.com/9Ashwin/x-cli && cd x-cli
 pnpm install --ignore-scripts
 pnpm build
 node dist/cli.js --version
@@ -81,7 +81,7 @@ Hand this to an agent that can run shell commands:
 
 ```text
 Install the xx skill:
-npx skills add <repo> --skill xx
+npx skills add https://github.com/9Ashwin/x-cli --skill xx
 
 Then read the xx skill, follow it to install the CLI,
 walk me through signing in, and verify it works. Keep existing config.

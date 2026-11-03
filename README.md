@@ -32,12 +32,12 @@
 
 准备好 **Node.js 22.19+、Chrome，以及一个能执行 shell 的 Agent**。
 
-`xx` 的 skill 在仓库的 `skills/xx/`，按 Agent Skills 的目录约定摆放，所以 `npx skills add <repo> --skill xx` 能直接装。
+`xx` 的 skill 在仓库的 `skills/xx/`，按 Agent Skills 的目录约定摆放，所以 `npx skills add https://github.com/9Ashwin/x-cli --skill xx` 能直接装。
 
 ### 1. 安装
 
 ```bash
-git clone <repo> && cd xx
+git clone https://github.com/9Ashwin/x-cli && cd x-cli
 pnpm install --ignore-scripts
 pnpm build
 node dist/cli.js --version
@@ -67,7 +67,7 @@ xx auth login --manual
 
 ```text
 请帮我安装 xx 技能：
-npx skills add <repo> --skill xx
+npx skills add https://github.com/9Ashwin/x-cli --skill xx
 
 安装后读取 xx skill，按技能指引检查并安装 CLI，
 带我完成登录，并验证是否可用。已有配置请保留。
