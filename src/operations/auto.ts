@@ -261,6 +261,39 @@ export async function suggest(
 		pool.set(post.id, { ...post, source, via });
 	};
 
+	// A topic turns the timeline into a filter rather than a source. The home
+	// timeline is what X chose to show, so when the caller names a subject, a post
+	// from it that has nothing to do with that subject is noise — one run with
+	// `--query "AI agent"` returned an Elon Musk post among the results. The
+	// timeline still contributes; it just has to be about the topic.
+	//
+	// The match is any word of the query rather than the whole phrase, because a
+	// phrase is what the search box understands, not what a post says: a Chinese
+	// post about the topic writes "AI 智能体" and would never contain "ai agent".
+	//
+	// Latin words are matched on word boundaries, not as substrings: "ai" is two
+	// letters and appears inside `AlchainHust` and `BirdAlbum`, which is how an
+	// account with no relation to the topic survives a filter that claims to keep
+	// only the topic. A CJK word has no word boundaries to use, so it is matched
+	// as written.
+	const words = (input.query ?? "")
+		.toLowerCase()
+		.split(/[\s,，]+/)
+		.map((word) => word.trim())
+		.filter((word) => word.length >= 2);
+	const patterns = words.map((word) =>
+		/[\u3400-\u9fff]/.test(word)
+			? null
+			: new RegExp(`(^|[^a-z0-9_])${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z0-9_]|$)`, "i"),
+	);
+	const aboutTopic = (text: string) =>
+		!words.length ||
+		words.some((word, index) => {
+			const pattern = patterns[index];
+			return pattern ? pattern.test(text) : text.toLowerCase().includes(word);
+		});
+	let droppedByTopic = 0;
+
 	if (sources.includes("timeline")) {
 		const timeline = await readTimeline(session, { ...input, limit: input.limit ?? 20 }, signal).catch(
 			(error: unknown) => {
@@ -268,8 +301,13 @@ export async function suggest(
 				return null;
 			},
 		);
-		for (const row of timeline?.items ?? [])
+		for (const row of timeline?.items ?? []) {
+			if (!aboutTopic(`${row.text} ${row.handle ?? ""}`)) {
+				droppedByTopic++;
+				continue;
+			}
 			add({ ...row, engagement: parseTimelineEngagement(row), rank: 0 }, "timeline", null);
+		}
 	}
 
 	if (sources.includes("trend")) {
@@ -402,6 +440,11 @@ export async function suggest(
 			"A candidate whose section could not be read keeps its engagement numbers and reports `section_error`.",
 			`At most ${MAX_MEASURED} candidates have their section read, because each one costs a navigation. The rest are ranked but not measured.`,
 			`A post already shown in the last ${withinDays} day(s) is ranked after the fresh ones and marked \`seen.seen_recently\`; it is not dropped. This is what keeps a scheduled run from proposing the same post twice. \`--seen-within 0\` turns the check off.`,
+			...(words.length
+				? [
+						`--query \`${input.query}\` filtered the timeline: ${droppedByTopic} post(s) that mentioned none of its words were dropped. The search and trend sources already apply it as a query.`,
+					]
+				: []),
 		],
 	};
 }

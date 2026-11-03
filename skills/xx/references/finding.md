@@ -30,6 +30,23 @@ xx auto suggest --source search --query "AI agent" --goal reply
 xx auto suggest --source trend --goal reach
 ```
 
+### 指定主题和语言
+
+```bash
+xx auto suggest --query "AI agent" --language zh --goal reply
+xx auto suggest --query "智能体" --source search --language zh
+```
+
+`--query` 把整份结果收在这个主题上：
+
+- **search 源**把它当成 X 自己的查询发给搜索框
+- **timeline 源**按它的词过滤——一条都没提到的帖子会被丢掉，丢了几条写在 `limits` 里
+- **trend 源**仍然用热榜自己的词，热点本来就未必是你的主题
+
+`--language zh` 加的是 X 的 `lang:` 运算符，只有 search 源用得上。要「中文区的某个主题」就两个一起给。
+
+**`--query` 用词匹配而不是整句。** 搜索结果里的帖子不会原样重复你输入的短语（中文帖写「AI 智能体」，不会写「AI agent」），所以任一词命中就算相关。拉丁词按整词匹配，否则 `ai` 会命中 `AlchainHust`、`BirdAlbum` 这种名字。
+
 它已经把三条路径跑完并排了序，还打开前 8 条各自量了区。**主人说「找几条值得回的」时，先跑这个**，不要自己从 `feed read` 一条条翻。
 
 但 `auto suggest` 不是万能的：

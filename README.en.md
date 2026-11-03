@@ -103,6 +103,7 @@ Send this to your agent:
 | Capability | Entry point |
 | --- | --- |
 | Find posts worth answering (ranked, sections measured) | `xx auto suggest` |
+| Scope to a topic, Chinese only | `xx auto suggest --query "AI agent" --language zh` |
 | Read the timeline, the board, a keyword search | `xx feed read` · `xx trend read` · `xx search hot` |
 | Go from a board row to the posts under it | `xx trend posts --index <n>` |
 | Read one conversation | `xx comment list` · `xx post get` |

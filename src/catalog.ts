@@ -238,7 +238,7 @@ export const COMMANDS: CommandSpec[] = [
 			{
 				key: "query",
 				name: "--query <text>",
-				description: "Topic for the search source",
+				description: "Topic: the search source runs it, the timeline is filtered by it",
 				type: "string",
 			},
 			{

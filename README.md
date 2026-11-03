@@ -84,6 +84,7 @@ cp -r skills/xx ~/.claude/skills/xx
 | 能力 | 常用入口 |
 | --- | --- |
 | 找值得回的帖子（排序 + 量区） | `xx auto suggest` |
+| 指定主题、只看中文 | `xx auto suggest --query "AI agent" --language zh` |
 | 读时间线、热榜、关键词搜索 | `xx feed read` · `xx trend read` · `xx search hot` |
 | 从热榜走到它下面的帖子 | `xx trend posts --index <n>` |
 | 读一条推下面的对话 | `xx comment list` · `xx post get` |
