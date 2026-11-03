@@ -5,7 +5,7 @@
 ## 量这个区
 
 ```bash
-x-cli comment section --status <id> --scrolls 3
+xx comment section --status <id> --scrolls 3
 ```
 
 返回四组东西：
@@ -45,7 +45,7 @@ x-cli comment section --status <id> --scrolls 3
 然后跑：
 
 ```bash
-x-cli comment check --status <id> --draft "…"
+xx comment check --status <id> --draft "…"
 ```
 
 ### `check.verdict`
@@ -84,8 +84,8 @@ x-cli comment check --status <id> --draft "…"
 ## 发
 
 ```bash
-x-cli comment post --status <id> --text "…" --request-id reply-<id>-01
-x-cli comment reply --status <id> --comment-id <reply-id> --text "…" --request-id reply-<id>-02
+xx comment post --status <id> --text "…" --request-id reply-<id>-01
+xx comment reply --status <id> --comment-id <reply-id> --text "…" --request-id reply-<id>-02
 ```
 
 **`--request-id` 必须给，每次新的发送用新的 id。**
@@ -93,14 +93,14 @@ x-cli comment reply --status <id> --comment-id <reply-id> --text "…" --request
 发之前 `--dry-run` 检查参数（不开浏览器）：
 
 ```bash
-x-cli comment post --status 123 --text "…" --request-id t-1 --dry-run
+xx comment post --status 123 --text "…" --request-id t-1 --dry-run
 ```
 
 ### 结果怎么读
 
 | 返回 | 意思 |
 | --- | --- |
-| `confirmed: true` + `result.evidence` | 发出去了。`toast` 是平台提示；`new_row` 是新行；`modal_closed` 最弱 |
+| `confirmed: true` + `result.evidence` | 发出去了。`toast` 是平台提示；`new_row` 是页面上新增了一行、文字完全一致、且作者是本账号 |
 | `replayed: true` | 这个 request id 之前就成功了，没有重发 |
 | `delivery_uncertain` | **按了按钮但页面没给证据。可能已经发出去** |
 | `idempotency_conflict` | 同一个 request id 配了不同文字 |
@@ -109,6 +109,8 @@ x-cli comment post --status 123 --text "…" --request-id t-1 --dry-run
 | `needs_confirmation: true` | 半小时内发得有点多，停下来问。看过之后加 `--confirm` 继续 |
 
 **`confirmed: true` 就是发出去了。** 它已经核对过正文、目标、本人标记和页面证据。再跑一次 `comment list` 去「确认一下」不会让它更真。
+
+**弹窗关掉不算证据。** 页面在发送成功后会关弹窗，用户按 Esc 或者发送被拒也会关。所以只有弹窗关闭时返回的是 `delivery_uncertain`，不是成功——`uncertainty_reason` 会是 `composer_closed_without_new_row`。
 
 ### 测试功能不要拿陌生人的帖子当试验田
 
@@ -119,8 +121,8 @@ x-cli comment post --status 123 --text "…" --request-id t-1 --dry-run
 它可能已经出现在时间线上，再发就是两条。
 
 1. 先确认页面没有登录/验证遮罩（有遮罩时读到的是旧页面）。
-2. `x-cli comment list --status <id>` 看你的文字在不在。窗口是加载出来的，**没看到不等于没发出去**。
-3. `x-cli receipt get <request-id>` 看回执停在哪。
+2. `xx comment list --status <id>` 看你的文字在不在。窗口是加载出来的，**没看到不等于没发出去**。
+3. `xx receipt get <request-id>` 看回执停在哪。
 4. 真的没发出去，才用**新的** request id 重来，并告诉主人这是新的一次。
 
 **三个容易误读的地方：**

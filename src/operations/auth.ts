@@ -33,14 +33,14 @@ export async function openLogin(session: Session): Promise<unknown> {
 	if (!state.login_required && state.account?.handle) return { status: "already_signed_in", account: state.account };
 	return {
 		status: "login_window_open",
-		next: "Complete sign-in in Chrome, then run x-cli auth status.",
+		next: "Complete sign-in in Chrome, then run xx auth status.",
 		limits: ["The tool never types credentials. The owner signs in, in the dedicated profile."],
 		// The one case this window cannot serve. Google's sign-in refuses a browser
 		// started with a debugging port, which is exactly how this one is started,
 		// so the page says "this browser may not be secure" and there is nothing to
 		// fill in. Saying so here turns a dead end into the one command that works.
 		alternative:
-			"Signing in with Google is refused in a browser started for automation. Run `x-cli auth login --manual` instead: it opens the same profile without the debugging port.",
+			"Signing in with Google is refused in a browser started for automation. Run `xx auth login --manual` instead: it opens the same profile without the debugging port.",
 	};
 }
 
@@ -48,8 +48,8 @@ export async function requireSignedIn(session: Session): Promise<void> {
 	const state = await session.status();
 	if (state.verification_required)
 		throw new CliError("verification_required", "X is asking for human verification", {
-			hint: "Complete it in headed Chrome, then run x-cli auth status.",
+			hint: "Complete it in headed Chrome, then run xx auth status.",
 		});
 	if (state.login_required)
-		throw new CliError("login_required", "X requires a signed-in session", { hint: "Run x-cli auth login." });
+		throw new CliError("login_required", "X requires a signed-in session", { hint: "Run xx auth login." });
 }

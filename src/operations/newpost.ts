@@ -28,9 +28,9 @@ export interface NewPostResult {
 export async function publish(
 	input: Input,
 	signal: AbortSignal,
-	deps: { store: Store; chrome: ChromeManager; timeout: number; progress?: Reproduce },
+	deps: { store: Store; chrome: ChromeManager; timeout: number; progress?: Reproduce; self: string | null },
 ): Promise<NewPostResult> {
-	const { store, chrome, timeout } = deps;
+	const { store, chrome, timeout, self } = deps;
 	const step = deps.progress ?? quiet;
 	const text = input.text ?? "";
 	const key = input.request_id ?? randomUUID();
@@ -74,7 +74,7 @@ export async function publish(
 			"the post composer",
 		);
 		if (state.login_required)
-			throw new CliError("login_required", "X requires a signed-in session", { hint: "Run x-cli auth login." });
+			throw new CliError("login_required", "X requires a signed-in session", { hint: "Run xx auth login." });
 		if (state.verification_required)
 			throw new CliError("verification_required", "X is asking for human verification", {
 				hint: "Complete it in headed Chrome, then run auth status.",
@@ -108,7 +108,7 @@ export async function publish(
 		await session.click(point);
 
 		step("confirming", { request_id: key });
-		const settled = await settle(session, args, signal);
+		const settled = await settle(session, args, signal, self);
 		if (settled.blocked && !settled.dispatched) {
 			mayHaveDispatched = false;
 			throw new CliError("identity_mismatch", "The post was blocked because the composer changed");
@@ -168,14 +168,19 @@ interface Settled {
 	record?: unknown;
 }
 
-async function settle(session: Session, args: { token: string; text: string }, signal: AbortSignal): Promise<Settled> {
+async function settle(
+	session: Session,
+	args: { token: string; text: string },
+	signal: AbortSignal,
+	self: string | null,
+): Promise<Settled> {
 	const deadline = Date.now() + 12_000;
 	let previous: string | undefined;
 	let last: Record<string, unknown> | undefined;
 	while (Date.now() < deadline) {
 		signal.throwIfAborted();
 		const result = await session
-			.call<Record<string, unknown>>("reply.result", args)
+			.call<Record<string, unknown>>("reply.result", { ...args, self })
 			.catch(() => ({ confirmed: false, blocked: false, dispatched: true }));
 		last = result;
 		if (result.blocked === true && result.dispatched !== true) return result as Settled;

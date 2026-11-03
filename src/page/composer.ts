@@ -128,6 +128,15 @@ export function prepareWrite(args: ArmArgs & { mode?: "reply" | "post" }): { sel
 		token: args.token,
 		editor,
 		started_at: new Date().toISOString(),
+		// Every article on screen before anything was typed. A row carrying an id
+		// from this set cannot be this command's doing, however well its text
+		// matches: the page can load an older row after the press, and someone else
+		// may already have written the same words.
+		before: new Set(
+			findRendered<HTMLElement>(document, ARTICLE)
+				.map((article) => statusIdOf(article))
+				.filter((id): id is string => !!id),
+		),
 		dispatched: false,
 		blocked: false,
 	};
@@ -138,9 +147,36 @@ export interface Prepared {
 	token: string;
 	editor: HTMLElement;
 	started_at: string;
+	// Status ids already on the page when the command started typing.
+	before: Set<string>;
 	dispatched: boolean;
 	blocked: boolean;
 	blocked_reason?: string;
+}
+
+// The status id an article links to, read from its own timestamp link. A card can
+// hold several status links (a quote tweet inside it, a reply it answers); the one
+// wrapped around the <time> is the article's own.
+function statusIdOf(article: HTMLElement): string | null {
+	const link = [...article.querySelectorAll<HTMLAnchorElement>('a[href*="/status/"]')].find((anchor) =>
+		anchor.querySelector("time"),
+	);
+	if (!link) return null;
+	try {
+		return /\/status\/(\d{1,25})/.exec(new URL(link.href).pathname)?.[1] ?? null;
+	} catch {
+		return null;
+	}
+}
+
+// Whether the article's own footer says this account wrote it. The profile link
+// inside the article is the author; a reply's row carries the replier's handle.
+function authoredBySelf(article: HTMLElement, self: string | null): boolean {
+	if (!self) return false;
+	const author = [...article.querySelectorAll<HTMLAnchorElement>('a[href^="/"]')]
+		.map((anchor) => /^\/([A-Za-z0-9_]{1,15})$/.exec(anchor.getAttribute("href") ?? "")?.[1] ?? null)
+		.find((handle): handle is string => !!handle);
+	return !!author && author.toLowerCase() === self.toLowerCase();
 }
 
 export interface Guard {
@@ -250,7 +286,7 @@ export interface WriteResult {
 	blocked: boolean;
 	dispatched: boolean;
 	uncertain_reason?: string;
-	evidence?: "toast" | "new_row" | "modal_closed";
+	evidence?: "toast" | "new_row";
 	record?: { id: string | null; text: string; handle: string | null } | null;
 }
 
@@ -258,48 +294,83 @@ export interface WriteResult {
 // dialog closing with an empty editor is evidence; anything else is reported as
 // uncertain rather than as success, because a click that produced no evidence may
 // not have sent anything and must never be repeated automatically.
-export function writeResult(args: { token: string; text: string }): WriteResult {
+export function writeResult(args: {
+	token: string;
+	text: string;
+	self?: string | null;
+	mode?: "reply" | "post";
+}): WriteResult {
 	const state = window.__xCLI;
 	if (!state || state.token !== args.token) fail("identity_mismatch", "The composer this command filled is gone");
 	if (state.blocked) return { confirmed: false, blocked: true, dispatched: state.dispatched };
 
+	// A toast is the platform saying it accepted a send from this composer. It is
+	// the only signal that does not depend on the row being rendered yet, and it
+	// is a statement about this action rather than about the page's contents.
 	const toast = findRendered<HTMLElement>(document, '[data-testid="toast"]').map((element) =>
 		clean(element.textContent),
 	);
-	if (toast.some((text) => /(reply|post|tweet)\s+(was|has been)\s+sent|已发送|已发布|发送成功/i.test(text)))
+	if (
+		toast.some((text) =>
+			/(reply|post|tweet)\s+(was|has been)\s+sent|已发送|已发布|发送成功|Your post was sent/i.test(text),
+		)
+	)
 		return { confirmed: true, blocked: false, dispatched: true, evidence: "toast", record: null };
 
+	// A row proves the send only if it is a row this command produced: its id was
+	// not on the page before the press, its text is exactly what was typed, and the
+	// article says this account wrote it.
+	//
+	// The first version matched on text alone. Two things then confirmed sends that
+	// never happened: a page whose post button closed the dialog without creating
+	// anything, and a page where an older post by somebody else carried the same
+	// words. Both were stored as `confirmed`. Text is the command's input, not proof
+	// of its effect, and an id outside the baseline is what separates a new row from
+	// one the page happened to load.
 	const rows = findRendered<HTMLElement>(document, ARTICLE);
-	const match = rows.find(
-		(article) => clean(article.querySelector('[data-testid="tweetText"]')?.textContent) === args.text,
+	const candidates = rows
+		.map((article) => ({ article, id: statusIdOf(article) }))
+		.filter(({ id }) => !!id && !state.before.has(id as string));
+	const match = candidates.find(
+		({ article }) => clean(article.querySelector('[data-testid="tweetText"]')?.textContent) === args.text,
 	);
 	if (match) {
-		const link = [...match.querySelectorAll<HTMLAnchorElement>('a[href*="/status/"]')].find((anchor) =>
-			anchor.querySelector("time"),
-		);
-		const id = link ? /\/(\d{1,25})$/.exec(new URL(link.href).pathname)?.[1] : null;
-		const handle = /@([A-Za-z0-9_]{1,15})/.exec(clean(match.textContent))?.[1] ?? null;
+		const mine = args.self ? authoredBySelf(match.article, args.self) : false;
+		if (!args.self || mine) {
+			const handle = /@([A-Za-z0-9_]{1,15})/.exec(clean(match.article.textContent))?.[1] ?? null;
+			return {
+				confirmed: true,
+				blocked: false,
+				dispatched: true,
+				evidence: "new_row",
+				record: { id: match.id, text: args.text, handle },
+			};
+		}
+		// A new row with the right text by somebody else is not this command's
+		// output. Say so rather than claiming delivery.
 		return {
-			confirmed: true,
+			confirmed: false,
 			blocked: false,
 			dispatched: true,
-			evidence: "new_row",
-			record: { id: id ?? null, text: args.text, handle },
+			uncertain_reason: "new_row_by_another_account",
+			record: { id: match.id, text: args.text, handle: null },
 		};
 	}
 
-	// The dialog is gone and the editor it held went with it. X does this after a
-	// successful reply; it also does it when the owner closes the dialog by hand,
-	// so this is the weakest of the three signals and is reported as such.
+	// The dialog closing is not evidence on its own. X closes it after a successful
+	// send, and it also closes it when the owner presses Escape or the send is
+	// rejected — a page whose button only closes the modal produced a `confirmed`
+	// receipt from this branch alone. What the closing does say is that this press
+	// was accepted; whether a post came of it needs the row, and the row is not
+	// there yet. So it is reported as uncertain, with the reason.
 	const dialog = state.editor.closest<HTMLElement>(DIALOG);
 	const stillOpen = state.editor.isConnected && !!dialog?.isConnected;
 	if (!stillOpen)
 		return {
-			confirmed: true,
+			confirmed: false,
 			blocked: false,
 			dispatched: true,
-			evidence: "modal_closed",
-			record: null,
+			uncertain_reason: "composer_closed_without_new_row",
 		};
 	return { confirmed: false, blocked: false, dispatched: true, uncertain_reason: "composer_still_open" };
 }

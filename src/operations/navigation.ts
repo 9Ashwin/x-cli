@@ -54,7 +54,7 @@ export async function openStatus(
 		"the status page",
 	);
 	if (state.login_required)
-		throw new CliError("login_required", "X requires a signed-in session", { hint: "Run x-cli auth login." });
+		throw new CliError("login_required", "X requires a signed-in session", { hint: "Run xx auth login." });
 	if (state.verification_required)
 		throw new CliError("verification_required", "X is asking for human verification", {
 			hint: "Complete it in headed Chrome, then run auth status.",
@@ -74,7 +74,7 @@ export async function openStatus(
 	).catch(async () => {
 		const state = await session.status();
 		if (state.login_required)
-			throw new CliError("login_required", "X requires a signed-in session", { hint: "Run x-cli auth login." });
+			throw new CliError("login_required", "X requires a signed-in session", { hint: "Run xx auth login." });
 		if (state.verification_required)
 			throw new CliError("verification_required", "X is asking for human verification", {
 				hint: "Complete it in headed Chrome, then run auth status.",
@@ -94,6 +94,6 @@ export async function requireSignedIn(session: Session): Promise<Snapshot> {
 			hint: "Complete it in headed Chrome, then run auth status.",
 		});
 	if (state.login_required)
-		throw new CliError("login_required", "X requires a signed-in session", { hint: "Run x-cli auth login." });
+		throw new CliError("login_required", "X requires a signed-in session", { hint: "Run xx auth login." });
 	return state;
 }

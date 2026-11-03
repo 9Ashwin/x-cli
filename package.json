@@ -1,18 +1,20 @@
 {
-	"name": "x-cli",
+	"name": "xx",
 	"version": "0.1.0",
 	"packageManager": "pnpm@10.34.7",
 	"description": "Operate X from the command line: read a conversation, post a reply, and leave a receipt",
 	"type": "module",
 	"license": "MIT",
 	"bin": {
-		"x-cli": "dist/cli.js"
+		"xx": "dist/cli.js"
 	},
 	"files": [
 		"dist",
+		"skills",
 		"README.md",
 		"README.en.md",
 		"AGENTS.md",
+		"docs/assets",
 		"LICENSE",
 		"!dist/**/*.map"
 	],

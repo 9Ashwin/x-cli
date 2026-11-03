@@ -81,7 +81,7 @@ export async function waitForBoard(session: Session, tab: Tab, signal: AbortSign
 	await session.tab.goto(TABS[tab], { waitUntil: "domcontentloaded" });
 	const state = await session.status();
 	if (state.login_required)
-		throw new CliError("login_required", "X requires a signed-in session", { hint: "Run x-cli auth login." });
+		throw new CliError("login_required", "X requires a signed-in session", { hint: "Run xx auth login." });
 	if (state.verification_required)
 		throw new CliError("verification_required", "X is asking for human verification", {
 			hint: "Complete it in headed Chrome, then run auth status.",
@@ -165,7 +165,7 @@ export async function readTopic(session: Session, input: Input, signal: AbortSig
 	}
 	const state = await session.status();
 	if (state.login_required)
-		throw new CliError("login_required", "X requires a signed-in session", { hint: "Run x-cli auth login." });
+		throw new CliError("login_required", "X requires a signed-in session", { hint: "Run xx auth login." });
 	if (state.verification_required)
 		throw new CliError("verification_required", "X is asking for human verification", {
 			hint: "Complete it in headed Chrome, then run auth status.",

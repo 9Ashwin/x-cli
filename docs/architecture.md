@@ -66,7 +66,7 @@ catalog.comment.post
 
 ## State directory
 
-`~/.x-cli` by default, `X_CLI_STATE_DIR` or `--state-dir` to override.
+`~/.xx` by default, `XX_STATE_DIR` or `--state-dir` to override.
 
 | File | Holds |
 | --- | --- |

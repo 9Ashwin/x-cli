@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { existsSync } from "node:fs";
 import { appendFile, chmod, mkdir, open, readFile, rename, unlink } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -41,9 +42,16 @@ export interface Receipt {
 	target?: { tweet_id?: string; comment_id?: string };
 }
 
+// The environment variable is read first, then the new directory, then the name
+// the tool used before it was renamed. Keeping the old one working means an
+// installed sign-in and history survive the rename instead of silently starting
+// empty — a tool that loses its receipt log on upgrade loses the thing it is for.
 export function stateDirectory(): string {
+	if (process.env.XX_STATE_DIR) return resolve(process.env.XX_STATE_DIR);
 	if (process.env.X_CLI_STATE_DIR) return resolve(process.env.X_CLI_STATE_DIR);
-	return join(homedir(), ".x-cli");
+	const legacy = join(homedir(), ".x-cli");
+	const current = join(homedir(), ".xx");
+	return existsSync(legacy) && !existsSync(current) ? legacy : current;
 }
 
 export async function atomicWrite(path: string, data: string): Promise<void> {

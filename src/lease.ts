@@ -66,13 +66,30 @@ export async function withLease<T>(path: string, run: (signal: AbortSignal) => P
 				}
 				await new Promise((resolve) => setTimeout(resolve, RETRY_MS));
 			}
-			throw new CliError("busy", "Another x-cli command is using the browser", {
+			throw new CliError("busy", "Another xx command is using the browser", {
 				hint: "Wait for it to finish, then run this again. Only one command drives the tab at a time.",
 				details: { path: `${path}.lock`, waited_seconds: Math.round(WAIT_MS / 1000) },
 			});
 		}
 		throw error;
 	}
+	// Which directory this command locked, identified by inode. Cleaning up after a
+	// release is the bug this prevents: `release()` removes the directory, and by
+	// the time a forced removal ran another command could have acquired the lock —
+	// which was then deleted out from under it, breaking the serialisation this
+	// file exists to provide. A recreated lock directory has a different inode, so
+	// "the directory that exists now" is not the one this command owns.
+	const lockPath = `${path}.lock`;
+	const owned = await stat(lockPath)
+		.then((info) => info.ino)
+		.catch(() => null);
+	const stillOurs = async (): Promise<boolean> => {
+		const now = await stat(lockPath)
+			.then((info) => info.ino)
+			.catch(() => null);
+		return now !== null && owned !== null && now === owned;
+	};
+
 	let outcome: { ok: true; value: T } | { ok: false; error: unknown } | undefined;
 	try {
 		const result = await run(ownership.signal);
@@ -82,13 +99,14 @@ export async function withLease<T>(path: string, run: (signal: AbortSignal) => P
 		outcome = { ok: false, error };
 	} finally {
 		// A failed release is a warning, not a failure: a command that did its work
-		// and then could not clean up still did its work.
+		// and then could not clean up still did its work. The forced removal only
+		// runs when the release failed *and* the marker is still this command's;
+		// otherwise the directory now belongs to somebody else.
 		try {
 			await release();
 		} catch {
-			/* The directory state is checked and reported below. */
+			if (await stillOurs()) await forceRemove(lockPath);
 		}
-		await forceRemove(`${path}.lock`);
 	}
 	if (!outcome) throw new CliError("internal", "The lease produced no result");
 	if (!outcome.ok) throw outcome.error;

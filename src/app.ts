@@ -72,12 +72,26 @@ export class App {
 			validateTarget("comment.list", input);
 		if (!COMMANDS.some((command) => command.id === operation))
 			throw new CliError("invalid_argument", `Unknown command: ${operation}`);
+		// A write without a request id cannot be replayed, so a run that needs
+		// replaying has nothing to replay against. The fallback to a random UUID
+		// made the documented requirement unenforced and only visible afterwards,
+		// when the caller had a send and no id to look it up by. Checked before the
+		// dry-run branch so `--dry-run` answers the same question.
+		if (isWrite(operation) && !(input.request_id ?? "").trim())
+			throw new CliError("invalid_argument", "--request-id is required for a write", {
+				hint: "Pass --request-id with a value unique to this send; reusing it replays the receipt instead of sending again.",
+				details: { operation },
+			});
 		signal.throwIfAborted();
 
-		// Local commands never open Chrome, so their dry run runs them.
+		// A dry run plans and stops, before anything has happened. The first version
+		// ran local commands first "because they never open Chrome", so
+		// `browser configure --dry-run` wrote config.json and `clean --dry-run`
+		// deleted the profile's caches. A dry run that changes the machine is worse
+		// than no dry run: it is the flag a caller trusts to be safe.
+		if (input.dry_run) return this.plan(operation, input, id);
 		const local = await this.local(operation, input, signal);
 		if (local !== undefined) return local;
-		if (input.dry_run) return this.plan(operation, input, id);
 		if (operation === "auth.login" && input.manual) return this.manualLogin(signal);
 
 		// A run of replies stops here and asks. This is a prompt, not a gate: it
@@ -118,6 +132,10 @@ export class App {
 						chrome: this.chrome,
 						timeout: this.timeout,
 						progress: this.options.progress,
+						self: await session
+							.call<{ handle?: string | null }>("account")
+							.then((account) => account.handle ?? null)
+							.catch(() => null),
 					});
 				case "comment.scroll":
 					return await scrollConversation(session, input.pixels ?? 900);
@@ -166,6 +184,10 @@ export class App {
 						chrome: this.chrome,
 						timeout: this.timeout,
 						progress: this.options.progress,
+						self: await session
+							.call<{ handle?: string | null }>("account")
+							.then((account) => account.handle ?? null)
+							.catch(() => null),
 					});
 				case "post.like":
 				case "post.bookmark":
@@ -268,8 +290,8 @@ export class App {
 				closed: result.closed,
 				account: page.account,
 				next: page.login_required
-					? "The sign-in did not complete. Run x-cli auth login --manual again."
-					: "Signed in. Run x-cli auth status to confirm.",
+					? "The sign-in did not complete. Run xx auth login --manual again."
+					: "Signed in. Run xx auth status to confirm.",
 			};
 		} finally {
 			await session.close();

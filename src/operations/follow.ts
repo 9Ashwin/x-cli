@@ -57,7 +57,7 @@ export async function follow(
 		"the profile",
 	);
 	if (state.login_required)
-		throw new CliError("login_required", "X requires a signed-in session", { hint: "Run x-cli auth login." });
+		throw new CliError("login_required", "X requires a signed-in session", { hint: "Run xx auth login." });
 	if (state.verification_required)
 		throw new CliError("verification_required", "X is asking for human verification", {
 			hint: "Complete it in headed Chrome, then run auth status.",

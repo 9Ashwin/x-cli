@@ -5,7 +5,7 @@
 ## 发新帖
 
 ```bash
-x-cli post create --text "…" --request-id post-01
+xx post create --text "…" --request-id post-01
 ```
 
 和回复共用同一个编辑器，校验方向相反：回复**必须**有引用推文，新帖**必须**没有。这个对称性是两者不混淆的唯一保证。
@@ -15,8 +15,8 @@ x-cli post create --text "…" --request-id post-01
 ## 关注 / 取消关注
 
 ```bash
-x-cli user follow --handle someone               # 关注
-x-cli user follow --handle someone --value false # 取消关注
+xx user follow --handle someone               # 关注
+xx user follow --handle someone --value false # 取消关注
 ```
 
 按钮按 `aria-label` 里的 handle 匹配，所以侧栏推荐的其他账号不会被误点。对方的账号受保护时返回 `pending`（请求已发，等对方同意），**不是失败**。
@@ -26,9 +26,9 @@ x-cli user follow --handle someone --value false # 取消关注
 ## 点赞、收藏、转发
 
 ```bash
-x-cli post like     --status <id> --value true
-x-cli post bookmark --status <id> --value true
-x-cli post repost   --status <id> --value true
+xx post like     --status <id> --value true
+xx post bookmark --status <id> --value true
+xx post repost   --status <id> --value true
 ```
 
 `--value false` 是取消。状态从页面的 test id 读（`unlike` / `removeBookmark` / `unretweet` 表示已经做过），**不看数字**——数字是全网总数，会自己动。
@@ -40,8 +40,8 @@ x-cli post repost   --status <id> --value true
 ## 删帖
 
 ```bash
-x-cli comment delete --status <id> --confirm
-x-cli comment delete-many --ids "111,222,333" --confirm
+xx comment delete --status <id> --confirm
+xx comment delete-many --ids "111,222,333" --confirm
 ```
 
 **不可撤销。** 不带 `--confirm` 直接拒绝并报出数量。
@@ -53,8 +53,8 @@ x-cli comment delete-many --ids "111,222,333" --confirm
 ## 通知
 
 ```bash
-x-cli notice read --limit 30
-x-cli notice read --tab mentions
+xx notice read --limit 30
+xx notice read --tab mentions
 ```
 
 `kind` 有七种：`like` / `reply` / `follow` / `repost` / `mention` / `recommended` / `other`。
@@ -68,8 +68,8 @@ x-cli notice read --tab mentions
 ## 收藏和喜欢
 
 ```bash
-x-cli saved bookmarks --limit 30 --scrolls 2
-x-cli saved likes --limit 30
+xx saved bookmarks --limit 30 --scrolls 2
+xx saved likes --limit 30
 ```
 
 每条带 `liked` / `bookmarked` 当前状态，所以列表里可能有一条你已经取消过的。用 `id` 可以：

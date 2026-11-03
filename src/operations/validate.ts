@@ -47,15 +47,23 @@ export interface Input {
 	value?: boolean;
 }
 
+// Everything that changes the account or publishes something. This list decides
+// two things that a missing entry gets wrong: whether the posting-pace prompt runs,
+// and what `--dry-run` reports as the effect. It previously left out `post.create`
+// and `user.follow`, so a dry run of either said `read_or_navigation` — a caller
+// reading that plan would believe publishing a post had no account effect.
 export function isWrite(operation: string): boolean {
 	return [
 		"comment.post",
 		"comment.reply",
 		"comment.delete",
 		"comment.delete-many",
+		"post.create",
 		"post.like",
 		"post.bookmark",
 		"post.repost",
+		"user.follow",
+		"user.unfollow",
 	].includes(operation);
 }
 

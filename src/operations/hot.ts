@@ -164,7 +164,7 @@ export async function findHot(session: Session, input: Input, signal: AbortSigna
 	if (!collected.size) {
 		const state = await session.status();
 		if (state.login_required)
-			throw new CliError("login_required", "X requires a signed-in session", { hint: "Run x-cli auth login." });
+			throw new CliError("login_required", "X requires a signed-in session", { hint: "Run xx auth login." });
 	}
 	const items = [...collected.values()].slice(0, limit);
 	return {

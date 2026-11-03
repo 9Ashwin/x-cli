@@ -169,7 +169,7 @@ export const COMMANDS: CommandSpec[] = [
 		effect: "navigation",
 		guidance:
 			"Promoted posts are excluded from items and counted in limits. scope=loaded_dom and complete=false mean this is what the page rendered, not the whole timeline. The ids returned are accepted directly by comment post --status. This command never selects a target or writes anything: reading and acting are separate, and the decision between them is the caller's.",
-		examples: ["x-cli feed read --limit 20 --scrolls 2"],
+		examples: ["xx feed read --limit 20 --scrolls 2"],
 	},
 	{
 		id: "trend.read",
@@ -192,7 +192,7 @@ export const COMMANDS: CommandSpec[] = [
 		effect: "navigation",
 		guidance:
 			"An entry is a topic or a story, never a post. Trending returns ranked words with a category; news, sports and entertainment return one-line stories with an age and a post count. A row carries no id of its own — X opens the topic page from a click handler — so `trend posts --index <row_index> --tab <same tab>` reopens the tab, clicks that row and follows it to the posts, which is where the engagement is. `--topic <id>` works when you already have the numeric id. This needs no search term, which is what separates it from `search hot`. Promoted entries are excluded so the ranks stay as X numbered them.",
-		examples: ["x-cli trend read --tab news", "x-cli trend read --tab trending --limit 30"],
+		examples: ["xx trend read --tab news", "xx trend read --tab trending --limit 30"],
 	},
 	{
 		id: "trend.posts",
@@ -222,7 +222,7 @@ export const COMMANDS: CommandSpec[] = [
 		effect: "navigation",
 		guidance:
 			"The board row carries no id — X opens the topic page from a click handler, so the id only exists after the row is opened. Pass --index with a row_index from trend read and the command does the click and follows it, or --topic when you already have the id. The topic page is where the actual posts are, with full engagement from each card's summary label. Order is X's own ranking of the topic, which mixes recency and engagement. `items[].id` goes straight into comment list, comment section or comment post.",
-		examples: ["x-cli trend posts --index 1 --tab news --limit 10", "x-cli trend posts --topic 2117540022039552439"],
+		examples: ["xx trend posts --index 1 --tab news --limit 10", "xx trend posts --topic 2117540022039552439"],
 	},
 	{
 		id: "auto.suggest",
@@ -286,9 +286,9 @@ export const COMMANDS: CommandSpec[] = [
 		guidance:
 			"The one command that answers \"where should I reply\". It gathers posts from three sources — the home timeline, the Trending board used as search terms, and an optional keyword search — then opens each candidate's own conversation and measures it, so the ranking is not just engagement. `--goal reply` favours posts where each reply gets attention (views per reply); `--goal conversation` favours sections that have not already filled up with substance. Each candidate comes back with its section profile, the numbers the ranking used, a one-line `why`, and `angles` pointing at what is actually in the post. It never writes a reply, never picks what to say, and never sends anything — the writing is the caller's, and `comment check` measures the result against the same section. At most 8 candidates are opened because each costs a navigation; the rest are ranked but unmeasured. Every suggestion is recorded by post id, and a post already shown within `--seen-within` days is marked `seen.seen_recently` and ranked after the fresh ones — so a scheduled run does not propose the same post twice. Seen state lives in the state directory, never in the repository.",
 		examples: [
-			"x-cli auto suggest",
-			'x-cli auto suggest --source search --query "AI agent" --goal reply',
-			"x-cli auto suggest --goal conversation --section-limit 60",
+			"xx auto suggest",
+			'xx auto suggest --source search --query "AI agent" --goal reply',
+			"xx auto suggest --goal conversation --section-limit 60",
 		],
 	},
 	{
@@ -333,7 +333,7 @@ export const COMMANDS: CommandSpec[] = [
 		effect: "navigation",
 		guidance:
 			"Composes X's own operators (lang:, min_faves:, min_replies:, since:) and reads the Top tab, so the ordering is the platform's rather than a re-ranking computed here. Each post carries replies / reposts / likes / bookmarks / views as the card states them; a count the page did not print is null, not zero. That engagement is what tells a busy conversation from an empty one — a well-liked post with no replies has nobody to answer. This command finds candidates and stops: choosing one and writing the reply stay with the caller.",
-		examples: ['x-cli search hot --query "AI agent" --language zh --min-likes 500 --limit 10'],
+		examples: ['xx search hot --query "AI agent" --language zh --min-likes 500 --limit 10'],
 	},
 	{
 		id: "notice.read",
@@ -358,7 +358,7 @@ export const COMMANDS: CommandSpec[] = [
 		effect: "navigation",
 		guidance:
 			"Each entry carries the kind (like / reply / follow / repost / mention / recommended / other), the actors' handles, the row's text and its time. `recommended` marks a suggested post rather than someone acting: X fills this tab with suggestions when the account has no likes, replies or follows to report, and those rows would otherwise look like activity. Rows do not include the post id: the page links the actor, not the post, so which post a notification is about is only learnable by opening it. A row whose sentence matches no known kind is reported as other rather than guessed.",
-		examples: ["x-cli notice read --limit 30 --scrolls 2"],
+		examples: ["xx notice read --limit 30 --scrolls 2"],
 	},
 	{
 		id: "user.follow",
@@ -382,7 +382,7 @@ export const COMMANDS: CommandSpec[] = [
 		effect: "account_write",
 		guidance:
 			"The control is matched by the numeric id in its test id and by the handle in its aria-label, so a follow button for a suggested account in the sidebar cannot be pressed by mistake. A protected account answers with a confirmation dialog and the result reports pending rather than following. There is no batch follow: X's rules prohibit bulk or indiscriminate following.",
-		examples: ["x-cli user follow --handle someone", "x-cli user follow --handle someone --value false"],
+		examples: ["xx user follow --handle someone", "xx user follow --handle someone --value false"],
 	},
 	{
 		id: "post.like",
@@ -423,7 +423,7 @@ export const COMMANDS: CommandSpec[] = [
 		effect: "account_write",
 		guidance:
 			"Deletes one post and cannot be undone: the page asks for no confirmation, so --confirm is the only check there is. Ownership is proven from the post's author link, not from the menu appearing — a post by someone else has a more-menu too. The menu must offer exactly one delete item, and the confirmation dialog names nothing, so it is trusted only because it followed this press. The result is confirmed by the post leaving the page. Requires --request-id.",
-		examples: ["x-cli comment delete --status 1234567890 --confirm --request-id del-1234567890-01"],
+		examples: ["xx comment delete --status 1234567890 --confirm --request-id del-1234567890-01"],
 	},
 	{
 		id: "comment.delete-many",
@@ -448,7 +448,7 @@ export const COMMANDS: CommandSpec[] = [
 		effect: "account_write",
 		guidance:
 			"Each id goes through the same proof as comment delete: the post must be on its page, its author link must be this account, the menu must offer one delete item, and the result is confirmed by the post leaving. A post owned by someone else is skipped and named, never deleted; any other failure stops the batch so the next press is not a guess. There is no undo, so a partial run is reported as partial. Requires --confirm and --request-id.",
-		examples: ["x-cli comment delete-many --ids 123,456,789 --confirm --request-id del-batch-01"],
+		examples: ["xx comment delete-many --ids 123,456,789 --confirm --request-id del-batch-01"],
 	},
 	{
 		id: "comment.section",
@@ -467,7 +467,7 @@ export const COMMANDS: CommandSpec[] = [
 		effect: "navigation",
 		guidance:
 			"Returns the section's reply-length quartiles, how many ask questions, which replies lead on likes, and a shape count of how many carry a point versus generic praise. `led` is the most-liked replies in the loaded window, not a ranking of the section. `subject` labels each reply as `about_work`, `about_self`, `asking` or `spam` — what a reply points at, which is what makes quoting one safe or not — and reports the section's mix. This describes the window X chose to show; it is not a sample, and it says so.",
-		examples: ["x-cli comment section --status 1234567890 --scrolls 3"],
+		examples: ["xx comment section --status 1234567890 --scrolls 3"],
 	},
 	{
 		id: "comment.check",
@@ -492,7 +492,7 @@ export const COMMANDS: CommandSpec[] = [
 		effect: "navigation",
 		guidance:
 			"Reads the section, then measures the draft against it: length band, whether it names anything specific, whether it speaks from the writer's own position, and how much of it is praise vocabulary that would fit any post. It also compares the draft with the confirmed replies in this machine's own log and reports `sameness` — whether openings, endings and lengths are converging on one shape. `template` means change the angle, not the words. It is a report, not a gate — it never rewrites the text and never blocks a send. Passing it does not mean the reply is good, and failing it does not mean it is bad; it means the draft has the shape of the thing it warns about.",
-		examples: ['x-cli comment check --status 1234567890 --draft "…"'],
+		examples: ['xx comment check --status 1234567890 --draft "…"'],
 	},
 	{
 		id: "post.get",
@@ -501,7 +501,7 @@ export const COMMANDS: CommandSpec[] = [
 		effect: "navigation",
 		guidance:
 			"Returns the post itself. Use comment list for the conversation under it. A deleted or protected post is not_found rather than an empty object.",
-		examples: ["x-cli post get --status https://x.com/handle/status/1234567890"],
+		examples: ["xx post get --status https://x.com/handle/status/1234567890"],
 	},
 	{
 		id: "search.keyword",
@@ -526,7 +526,7 @@ export const COMMANDS: CommandSpec[] = [
 		effect: "navigation",
 		guidance:
 			"Uses the Latest tab: results in the order X served them, not by engagement. No results is an answer, not a failure; a rate limit is reported as unsupported_page. Same item shape as feed read, and the same rule: this never chooses a target or posts.",
-		examples: ['x-cli search keyword --query "AI agent" --limit 20'],
+		examples: ['xx search keyword --query "AI agent" --limit 20'],
 	},
 	{
 		id: "post.create",
@@ -535,7 +535,7 @@ export const COMMANDS: CommandSpec[] = [
 		effect: "account_write",
 		guidance:
 			"Requires --text or --text-file and --request-id. The composer must be a new-post composer: a quoted tweet in it would mean this lands as a reply, and that is refused. Same delivery contract as a reply — a receipt before the press, a guard at press time, and delivery_uncertain when the page gives no evidence. A dry run does not open Chrome.",
-		examples: ['x-cli post create --text "…" --request-id post-01'],
+		examples: ['xx post create --text "…" --request-id post-01'],
 	},
 	{
 		id: "comment.list",
@@ -554,7 +554,7 @@ export const COMMANDS: CommandSpec[] = [
 		effect: "navigation",
 		guidance:
 			"scope=loaded_dom and complete=false mean this is a bounded view of what the page rendered, not the whole thread. An empty list means nothing loaded, not that nobody replied.",
-		examples: ["x-cli comment list --status https://x.com/handle/status/1234567890 --limit 30 --scrolls 3"],
+		examples: ["xx comment list --status https://x.com/handle/status/1234567890 --limit 30 --scrolls 3"],
 	},
 	{
 		id: "comment.get",
@@ -585,7 +585,7 @@ export const COMMANDS: CommandSpec[] = [
 		effect: "account_write",
 		guidance:
 			"Requires --text or --text-file and --request-id. The reply target is proved from the composer's own reply state before the post button is pressed; a composer that is not in reply mode is refused rather than posted publicly. Delivery is reported only from a success toast or a new row, and a press with neither returns delivery_uncertain: inspect the conversation and the receipt, never resend automatically. A dry run does not open Chrome.",
-		examples: ['x-cli comment post --status 1234567890 --text "好问题" --request-id reply-1234567890-01 --dry-run'],
+		examples: ['xx comment post --status 1234567890 --text "好问题" --request-id reply-1234567890-01 --dry-run'],
 	},
 	{
 		id: "comment.reply",
@@ -631,7 +631,7 @@ export const COMMANDS: CommandSpec[] = [
 		effect: "navigation",
 		guidance:
 			"Each item carries the card's current state (liked, bookmarked), so an entry can be one this account has since undone. Use the id with post bookmark --value false to remove it, or comment post to reply to it now. Reading this list is a bounded window: X loads older entries as it scrolls.",
-		examples: ["x-cli saved bookmarks --limit 30 --scrolls 2"],
+		examples: ["xx saved bookmarks --limit 30 --scrolls 2"],
 	},
 	{
 		id: "saved.likes",
@@ -649,7 +649,7 @@ export const COMMANDS: CommandSpec[] = [
 		effect: "navigation",
 		guidance:
 			"Same shape as saved bookmarks. Use post like --value false with an item id to unlike it, or comment post to reply to something read before it was saved.",
-		examples: ["x-cli saved likes --limit 30"],
+		examples: ["xx saved likes --limit 30"],
 	},
 	{
 		id: "receipt.get",
@@ -683,7 +683,7 @@ export const COMMANDS: CommandSpec[] = [
 ];
 
 export const GLOBAL_FLAGS = [
-	{ name: "--state-dir <path>", description: "Override local state directory (or X_CLI_STATE_DIR)" },
+	{ name: "--state-dir <path>", description: "Override local state directory (or XX_STATE_DIR)" },
 	{ name: "--chrome <path>", description: "Override Chrome executable (or X_CLI_CHROME_PATH)" },
 	{ name: "--format <format>", description: "json or pretty", default: "json" },
 	{ name: "--timeout <seconds>", description: "Per-command timeout in seconds", default: 45 },

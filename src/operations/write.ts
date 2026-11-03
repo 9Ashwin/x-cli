@@ -30,6 +30,9 @@ interface Deps {
 	chrome: ChromeManager;
 	timeout: number;
 	progress?: Reproduce;
+	// The signed-in handle. Delivery proof needs it: a new row only counts when the
+	// article says this account wrote it.
+	self: string | null;
 }
 
 function uncertain(key: string, receipt: Receipt | undefined, reason?: string, cause?: unknown) {
@@ -69,7 +72,7 @@ async function resolveTarget(session: Session, input: Input, rootID: string) {
 }
 
 export async function send(operation: string, input: Input, signal: AbortSignal, deps: Deps): Promise<unknown> {
-	const { store, chrome, timeout } = deps;
+	const { store, chrome, timeout, self } = deps;
 	const step = deps.progress ?? quiet;
 	const text = input.text ?? "";
 	const rootID = statusIDOf(input.status_id ?? input.resource) ?? "";
@@ -203,7 +206,7 @@ export async function send(operation: string, input: Input, signal: AbortSignal,
 		await session.click(point);
 
 		step("confirming", { request_id: key });
-		const outcome = await settle(session, { ...args, tweet_id: rootID }, signal);
+		const outcome = await settle(session, { ...args, tweet_id: rootID }, signal, self);
 		if (outcome.blocked && !outcome.dispatched) {
 			mayHaveDispatched = false;
 			const reason = await session.call<string | null>("reply.blocked").catch(() => null);
@@ -267,13 +270,16 @@ async function settle(
 	session: Session,
 	args: { token: string; text: string; tweet_id: string },
 	signal: AbortSignal,
+	self: string | null,
 ): Promise<WriteResult & { confirmed?: boolean }> {
 	const deadline = Date.now() + 12_000;
 	let previous: string | undefined;
 	let last: WriteResult | undefined;
 	while (Date.now() < deadline) {
 		signal.throwIfAborted();
-		const result = await session.call<WriteResult>("reply.result", args);
+		// `self` lets the page check that the new row's author is this account. Without
+		// it a row by somebody else carrying the same words would confirm the send.
+		const result = await session.call<WriteResult>("reply.result", { ...args, self });
 		last = result;
 		if (result.blocked && !result.dispatched) return result;
 		const signature = JSON.stringify(result);

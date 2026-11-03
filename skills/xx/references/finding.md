@@ -5,11 +5,11 @@
 ## 三条路径，别混用
 
 ```bash
-x-cli feed read --limit 20 --scrolls 2              # 1. 我的推荐流里现在有什么
-x-cli trend read --limit 20                          # 2. 全网在聊什么（不用先想到词）
-x-cli trend posts --index 0 --tab news --limit 10    # 2b. 这个话题下的帖子
-x-cli search keyword --query "AI agent" --limit 20   # 3. 我知道要找什么
-x-cli search hot --query "AI agent" --language zh --min-likes 500   # 3b. 这个词下最热的帖
+xx feed read --limit 20 --scrolls 2              # 1. 我的推荐流里现在有什么
+xx trend read --limit 20                          # 2. 全网在聊什么（不用先想到词）
+xx trend posts --index 0 --tab news --limit 10    # 2b. 这个话题下的帖子
+xx search keyword --query "AI agent" --limit 20   # 3. 我知道要找什么
+xx search hot --query "AI agent" --language zh --min-likes 500   # 3b. 这个词下最热的帖
 ```
 
 | 想知道 | 用 | 返回什么 |
@@ -25,9 +25,9 @@ x-cli search hot --query "AI agent" --language zh --min-likes 500   # 3b. 这个
 ## `auto suggest` 什么时候用
 
 ```bash
-x-cli auto suggest --goal reply --limit 20
-x-cli auto suggest --source search --query "AI agent" --goal reply
-x-cli auto suggest --source trend --goal reach
+xx auto suggest --goal reply --limit 20
+xx auto suggest --source search --query "AI agent" --goal reply
+xx auto suggest --source trend --goal reach
 ```
 
 它已经把三条路径跑完并排了序，还打开前 8 条各自量了区。**主人说「找几条值得回的」时，先跑这个**，不要自己从 `feed read` 一条条翻。
@@ -86,8 +86,8 @@ x-cli auto suggest --source trend --goal reach
 **行上没有 id。** X 用点击事件打开话题页，`<a>` 不存在，所以 id 只有打开后才有。每条带一个 `row_index`（它在页面上的位置）。
 
 ```bash
-x-cli trend read --tab news          # → row_index 0, 1, 2…
-x-cli trend posts --index 1 --tab news --limit 10
+xx trend read --tab news          # → row_index 0, 1, 2…
+xx trend posts --index 1 --tab news --limit 10
 ```
 
 `--tab` 必须和 `trend read` 时一致，否则点到的是另一条。

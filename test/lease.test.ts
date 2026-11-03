@@ -54,6 +54,30 @@ test("an error inside the work still releases the lock", async () => {
 	await rm(dirname(path), { recursive: true, force: true });
 });
 
+test("a released lock is not deleted again after somebody else takes it", async () => {
+	// The failure this pins: release removes the directory, a second command
+	// acquires it, and a late forced removal deletes the new holder's lock. The
+	// two commands then run at once, which is exactly what the lease prevents.
+	const path = await scratch();
+	const first = await withLease(path, async () => "a");
+	assert.equal(first, "a");
+
+	let inside = false;
+	const second = withLease(path, async () => {
+		inside = true;
+		await new Promise((resolve) => setTimeout(resolve, 300));
+		inside = false;
+		return "b";
+	});
+	await new Promise((resolve) => setTimeout(resolve, 80));
+	assert.equal(inside, true, "the second command should hold the lock");
+	// A third command must wait for the second rather than acquiring the lock the
+	// second still holds — which is what would happen if it had been deleted.
+	assert.equal(await withLease(path, async () => "c"), "c");
+	assert.equal(await second, "b");
+	await rm(dirname(path), { recursive: true, force: true });
+});
+
 function dirname(path: string): string {
 	return path.slice(0, path.lastIndexOf("/"));
 }

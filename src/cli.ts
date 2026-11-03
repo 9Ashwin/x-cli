@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { run } from "./main.ts";
 
-// A reader that stops early — `x-cli --version | head -1`, or any pipeline whose
+// A reader that stops early — `xx --version | head -1`, or any pipeline whose
 // consumer exits — closes the pipe and the next write raises EPIPE. Node's
 // default turns that into an unhandled error, which makes a normal `head` look
 // like a crash.

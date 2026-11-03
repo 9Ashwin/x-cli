@@ -246,7 +246,7 @@ export class ChromeManager {
 		const state = await this.store.read<BrowserState | null>("browser.json", null);
 		if (!state)
 			throw new CliError("browser_not_running", "No dedicated Chrome session", {
-				hint: "Run x-cli auth login, or x-cli browser start after login.",
+				hint: "Run xx auth login, or xx browser start after login.",
 			});
 		if (!Number.isInteger(state.port) || typeof state.websocket !== "string" || typeof state.headless !== "boolean")
 			throw new CliError("state_corrupt", "Invalid browser session record");

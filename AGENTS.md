@@ -20,11 +20,18 @@ Repository guidance, issue and PR templates, and commit messages are in English.
 Conversation follows the user's language. Keep quoted code, error output and
 upstream material in their original language.
 
+Reader-facing documentation has two versions: `README.md` is Simplified Chinese
+and is the main page, `README.en.md` is its English counterpart. A change to one
+is a change to the other — a pair that has drifted is worse than one language,
+because the reader cannot tell which is current. The agent skill
+(`skills/xx/SKILL.md` and `skills/xx/references/`) is written in Chinese, matching the
+language its reader is spoken to in.
+
 Use Conventional Commits for commit messages and PR titles.
 
 ## What this project is
 
-`x-cli` is a local CLI that lets an agent operate X (Twitter) from the command
+`xx` is a local CLI that lets an agent operate X (Twitter) from the command
 line: read a conversation, post a reply, and leave a durable record of every
 write. It does not bundle a model, schedule anything, or decide content — the
 calling agent does that.
@@ -91,7 +98,7 @@ commit cookies, Chrome profiles, receipts, or local state.
 
 ## What the tool must never decide
 
-`x-cli` acts on a real account. The code's job is to make every action auditable
+`xx` acts on a real account. The code's job is to make every action auditable
 and reversible by the person running it — not to decide whether the action is
 appropriate.
 
