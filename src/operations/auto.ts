@@ -2,6 +2,7 @@ import type { Session } from "../browser.ts";
 import { CliError } from "../errors.ts";
 import type { Store } from "../store.ts";
 import type { TweetRow } from "./comments.ts";
+import { type History, historyOf } from "./engaged.ts";
 import { type Engagement, findHot, type HotPost } from "./hot.ts";
 import { waitFor } from "./navigation.ts";
 import { profileSection, type SectionProfile } from "./section.ts";
@@ -62,6 +63,10 @@ export interface Candidate {
 	why: string;
 	// Whether this tool has already put the post in front of its caller.
 	seen: SeenState;
+	// What this account has already done to the post, when it has done anything.
+	// A reply means it is not offered again; a like or a repost only demotes it.
+	// Distinct from `engagement`, which is the post's own counts.
+	history: History | null;
 	// Questions worth answering, phrased as what the reader should look for.
 	// These are pointers into the post, never drafted replies.
 	angles: string[];
@@ -74,6 +79,10 @@ export interface SuggestResult {
 	// Candidates skipped from the ranking because they were shown recently.
 	// They are still in `items`, ranked after the fresh ones.
 	seen_skipped: number;
+	// Candidates left out entirely because this account has already replied to
+	// them. They are not in `items`: a second reply to the same post is a
+	// duplicate, not a choice.
+	already_replied: string[];
 	items: Candidate[];
 	scope: "loaded_dom";
 	complete: false;
@@ -244,6 +253,10 @@ export async function suggest(
 	const goalValue = goal(input);
 	const withinDays = Math.max(input.seen_within ?? 7, 0);
 	const seen = await readSeen(deps.store);
+	// The operation log is this machine's own record: replies, likes, reposts and
+	// bookmarks made here. A post answered from another machine is not in it, so
+	// the answer says what it knows rather than what it assumes.
+	const engaged = historyOf(await deps.store.events());
 	const sources = (input.source ?? "timeline,trend,search")
 		.split(",")
 		.map((value) => value.trim())
@@ -255,8 +268,14 @@ export async function suggest(
 	const pool = new Map<string, HotPost & { source: Candidate["source"]; via: string | null }>();
 	const failures: string[] = [];
 
+	const replied: string[] = [];
 	const add = (post: HotPost, source: Candidate["source"], via: string | null) => {
 		if (!post.id || post.promoted || post.mine) return;
+		// Already answered: offering it again would be offering a duplicate.
+		if (engaged.get(post.id)?.post === "replied") {
+			if (!replied.includes(post.id)) replied.push(post.id);
+			return;
+		}
 		const existing = pool.get(post.id);
 		// A post found by two sources is kept once, with whichever reading has the
 		// more complete engagement.
@@ -414,6 +433,7 @@ export async function suggest(
 			signals,
 			why: whyFor(goalValue, signals, post),
 			seen: stateOf(seen, post.id, withinDays),
+			history: engaged.get(post.id) ?? null,
 			angles: anglesFor(post, section),
 		};
 	});
@@ -434,7 +454,9 @@ export async function suggest(
 	// discussed; ranking it first would make a scheduled run say the same thing
 	// twice. This is the compromise, and `seen_skipped` counts it instead of
 	// leaving the caller to infer it from the order.
-	const fresh = (candidate: Candidate) => (candidate.seen.seen_recently ? 1 : 0);
+	// A post this account already touched ranks with the seen ones: it is not
+	// new information, whether the reason is "we suggested it" or "you liked it".
+	const fresh = (candidate: Candidate) => (candidate.seen.seen_recently || candidate.history ? 1 : 0);
 	items.sort((left, right) => fresh(left) - fresh(right) || score(right) - score(left));
 	const seenSkipped = items.filter((candidate) => candidate.seen.seen_recently).length;
 	await remember(
@@ -447,6 +469,7 @@ export async function suggest(
 		considered: pool.size,
 		measured: items.filter((candidate) => candidate.measured).length,
 		seen_skipped: seenSkipped,
+		already_replied: replied,
 		items,
 		scope: "loaded_dom",
 		complete: false,
@@ -457,6 +480,7 @@ export async function suggest(
 			"A candidate whose section could not be read keeps its engagement numbers and reports `section_error`.",
 			`Sections are not read unless \`--section-limit\` is given: each costs a navigation, and doing eight of them made this command take forty seconds against a forty-five second timeout. Rank first, then run \`comment section\` on the candidates you care about. At most ${MAX_MEASURED} can be measured in one call.`,
 			`A post already shown in the last ${withinDays} day(s) is ranked after the fresh ones and marked \`seen.seen_recently\`; it is not dropped. This is what keeps a scheduled run from proposing the same post twice. \`--seen-within 0\` turns the check off.`,
+			`${replied.length} candidate(s) were left out because this account has already replied to them. That list is this machine's own operation log; replies made elsewhere are not in it.`,
 			...(words.length
 				? [
 						`--query \`${input.query}\` filtered the timeline: ${droppedByTopic} post(s) that mentioned none of its words were dropped. The search and trend sources already apply it as a query.`,

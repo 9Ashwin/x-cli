@@ -69,6 +69,17 @@ xx auto suggest --query "智能体" --source search --language zh
 
 **原样贴出去就是最典型的空话**，而且是 `comment check` 专门在抓的那种。你要读原帖、形成自己的立场，再写。`angles` 只说「这里有个口子」，说什么、怎么说，是你的判断。
 
+### 已经参与过的帖子
+
+`auto suggest` 读本机的操作日志，两条规则：
+
+- **已经回复过的帖子直接排除**，id 列在 `already_replied` 里。再推一次就是推一条重复的。
+- **点过赞、转推过、收藏过的降级**，但仍留在列表里并带 `history`。做过一个动作不等于没话说，所以只降不删。
+
+`history` 里也有 `at` 和 `operation`，能看出是什么时候因为什么。
+
+**这是本机的日志。** 在别的电脑上回复过的帖子这里不知道，`limits` 里写明了这一点。
+
 ### 定时跑
 
 `auto suggest` 记着每条帖子什么时候被推过。`--seen-within <天数>`（默认 7）内的帖子仍然出现，但排在新帖后面，标 `seen.seen_recently: true`，`seen_skipped` 报降级了几条。
