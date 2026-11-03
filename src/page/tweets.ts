@@ -37,6 +37,23 @@ export interface TweetRow {
 	// only the article missed both, so an ad looked like something worth replying
 	// to and `comment post` would have addressed it.
 	promoted: boolean;
+	// The one label X puts on a post's action row, e.g. "174 replies, 541 reposts,
+	// 2741 likes, 3949 bookmarks, 234215 views". Reading the buttons individually
+	// misses bookmarks and views, whose own labels carry no count.
+	engagement_label?: string | null;
+	// What this account has already done to the post, as the card states it. The
+	// test ids are `unlike` when liked and `removeBookmark` when bookmarked — the
+	// id names the action available, not the state, so the "remove" spelling is
+	// the positive reading.
+	liked: boolean;
+	bookmarked: boolean;
+	// What the card says it is: a repost of someone else's post, a reply, or
+	// pinned. Deleting has to distinguish these — a repost is removed without
+	// touching the original, and a pinned reply is still a reply.
+	kind: "post" | "repost" | "reply";
+	pinned: boolean;
+	// The author handle as a stable link target, separate from the display text.
+	author_link: string | null;
 }
 
 const TWEET = 'article[data-testid="tweet"]';
@@ -104,6 +121,16 @@ function count(label: string | null): number | null {
 	return raw * scale;
 }
 
+// The summary label. It is the only element whose aria-label contains commas and
+// more than one count; the per-button labels each name one action.
+function engagementLabel(article: Element): string | null {
+	for (const element of article.querySelectorAll("[aria-label]")) {
+		const label = element.getAttribute("aria-label") ?? "";
+		if (/views|Views|查看/.test(label) && label.includes(",")) return label;
+	}
+	return null;
+}
+
 function aria(article: Element, selector: string): string | null {
 	return article.querySelector(selector)?.getAttribute("aria-label") ?? null;
 }
@@ -118,6 +145,16 @@ function replyTo(article: Element): ReplyRef | null {
 	if (!line) return null;
 	const handle = /@([A-Za-z0-9_]{1,15})/.exec(clean(line.textContent))?.[1];
 	return handle ? { handle, id: null } : null;
+}
+
+// A card states "reposted" or "replying to" in its social context line. Both
+// matter for deletion: deleting a repost removes the repost, not the original,
+// and the menu on a repost says so.
+function kindOf(article: Element): "post" | "repost" | "reply" {
+	const context = clean(article.querySelector('[data-testid="socialContext"]')?.textContent);
+	if (/reposted|转推了|已转推/i.test(context)) return "repost";
+	if (/replying|回复了|回复给/i.test(context)) return "reply";
+	return "post";
 }
 
 function textOf(article: Element): string {
@@ -184,6 +221,12 @@ export function readTweets(selfHandle: string | null): TweetRow[] {
 			mine: !!handle && !!selfHandle && handle.toLowerCase() === selfHandle.toLowerCase(),
 			depth: nestedUnder(article) ? 1 : 0,
 			promoted: promoted(article),
+			engagement_label: engagementLabel(article),
+			liked: !!article.querySelector('[data-testid="unlike"]'),
+			bookmarked: !!article.querySelector('[data-testid="removeBookmark"]'),
+			kind: kindOf(article),
+			pinned: /pinned|已置顶|置顶/i.test(clean(article.querySelector('[data-testid="socialContext"]')?.textContent)),
+			author_link: identity(article).handle ? `/${identity(article).handle}` : null,
 		});
 	}
 	return rows;

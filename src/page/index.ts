@@ -1,5 +1,15 @@
+import { type Action, actionControl, actionResult, repostMenu, toggleState } from "./actions.ts";
 import { type ArmArgs, armWrite, cleanup, composerState, prepareWrite, writeResult } from "./composer.ts";
-import { fail, type Point, point } from "./dom.ts";
+import { caret, confirmButton, confirmDialog, deleteItem, gone } from "./delete.ts";
+import { clean, fail, findRendered, type Point, point } from "./dom.ts";
+import {
+	actionControl as followActionControl,
+	actionResult as followActionResult,
+	followControl,
+	pendingConfirm,
+	pendingDialog,
+} from "./follow.ts";
+import { readNotifications } from "./notify.ts";
 import { account, snapshot } from "./page.ts";
 import { findTweet, readTweets, replyControl, scrollConversation } from "./tweets.ts";
 
@@ -10,6 +20,9 @@ import { findTweet, readTweets, replyControl, scrollConversation } from "./tweet
 interface Args extends Partial<ArmArgs> {
 	tweet_id?: string;
 	limit?: number;
+	action?: string;
+	wanted?: boolean;
+	handle?: string;
 	pixels?: number;
 	include_text?: boolean;
 	token?: string;
@@ -55,6 +68,75 @@ function execute(operation: string, args: Args): unknown {
 			return writeResult(args as { token: string; text: string });
 		case "reply.blocked":
 			return window.__xCLI?.blocked_reason ?? null;
+		case "action.state": {
+			if (!args.tweet_id || !args.action) fail("invalid_argument", "tweet_id and action are required");
+			return toggleState(args.action as Action, args.tweet_id);
+		}
+		case "action.control": {
+			if (!args.tweet_id || !args.action) fail("invalid_argument", "tweet_id and action are required");
+			return actionControl(args.action as Action, args.tweet_id, args.wanted === true, args.token ?? "action");
+		}
+		case "action.result": {
+			if (!args.tweet_id || !args.action) fail("invalid_argument", "tweet_id and action are required");
+			// A repost's menu is still open when the result is read; the plain item
+			// is what was pressed, and the menu closing is the page acknowledging it.
+			return actionResult(args.action as Action, args.tweet_id, args.wanted === true);
+		}
+		case "repost.menu":
+			return repostMenu();
+		case "follow.state":
+			return { following: followControl(args.handle ?? "").state.following };
+		case "follow.control": {
+			const control = followActionControl(args.handle ?? "", args.wanted === true, args.token ?? "follow");
+			return control;
+		}
+		case "follow.result":
+			return followActionResult(args.handle ?? "", args.wanted === true);
+		case "follow.pending":
+			return pendingDialog();
+		case "follow.pending-confirm":
+			return pendingConfirm(args.token ?? "follow-confirm");
+		case "delete.caret":
+			return caret(args.tweet_id ?? "", args.token ?? "caret");
+		case "delete.item":
+			return deleteItem(args.token ?? "delete");
+		case "delete.confirm":
+			return confirmDialog();
+		case "delete.confirm-button":
+			return confirmButton(args.token ?? "confirm");
+		case "delete.state":
+			return gone(args.tweet_id ?? "");
+		case "notification.list":
+			return readNotifications();
+		case "trend.list": {
+			// Each row is a role=link with the rank, a category line, the topic, and
+			// sometimes related terms. The topic is the longest short leaf; rank is
+			// the leading number, which only some rows carry.
+			const rows = findRendered<HTMLElement>(document, '[data-testid="trend"]');
+			return rows
+				.map((row) => {
+					const leaves = [...row.querySelectorAll("span")]
+						.map((span) => clean(span.textContent))
+						.filter((text) => text && text !== "·");
+					const rankText = /^\d{1,3}$/.test(leaves[0] ?? "") ? leaves[0] : null;
+					const meta =
+						leaves.find((text) => /Trending|Trend/i.test(text) && text.includes("·")) ??
+						leaves.find((text) => text.includes("·")) ??
+						"";
+					const rest = leaves.filter((text) => text !== rankText && text !== meta);
+					const promoted = /Promoted/i.test(clean(row.textContent));
+					const href = row.querySelector('a[href*="search"]')?.getAttribute("href") ?? null;
+					return {
+						rank: rankText ? Number(rankText) : null,
+						meta,
+						topic: rest[0] ?? "",
+						context: rest.length > 1 ? rest.slice(1).join(" | ") : null,
+						url: href,
+						already_promoted: promoted,
+					};
+				})
+				.filter((row: { topic: string; already_promoted: boolean }) => row.topic && !row.already_promoted);
+		}
 		case "conversation.scroll":
 			return scrollConversation(args.pixels ?? 900);
 		case "cleanup":

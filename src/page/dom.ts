@@ -55,6 +55,10 @@ export interface Point {
 	x: number;
 	y: number;
 	selector: string;
+	// The attribute value this point actually marked the element with. It is
+	// unique per call, and a guard that re-checks the control at press time must
+	// compare against this rather than against the token its caller passed in.
+	mark?: string;
 }
 
 // A control is armed only when a press at its centre would land on it, and the
@@ -84,7 +88,12 @@ export function point(element: HTMLElement, token: string): Point {
 		const y = rect.top + rect.height / 2;
 		const hit = document.elementFromPoint(x, y);
 		const sized = rect.width > 0 && rect.height > 0;
-		const aimed = sized && !!hit && (hit === element || element.contains(hit));
+		// The thing at that point may be any descendant of the control — an icon
+		// path, a span inside a button — and it may also be an ancestor that wraps
+		// it. Both mean the press lands on the control; requiring the control to
+		// contain the hit alone refused a like button whose visible content is a
+		// span the button is drawn around, not inside.
+		const aimed = sized && !!hit && (hit === element || element.contains(hit) || hit.contains(element));
 		// Aiming at a control that is still moving is not aiming at it: the press
 		// is issued later than this measurement. The position must hold for one
 		// frame before the control counts as armed.
@@ -92,8 +101,20 @@ export function point(element: HTMLElement, token: string): Point {
 		previousTop = rect.top;
 		last = { width: Math.round(rect.width), height: Math.round(rect.height), covered: sized && !aimed };
 		if (aimed && still && !disabled) {
-			element.setAttribute("data-x-cli-control", token);
-			return { x, y, selector: `[data-x-cli-control="${token}"]` };
+			// A unique value per call. Sharing one token across two controls made
+			// `[data-x-cli-control="..."]` match both once the second was marked, and
+			// Playwright refused the press as ambiguous. That happened three times —
+			// reply control and post button, caret and menu item, and a toggle and its
+			// own successor — so uniqueness is generated here rather than asked of
+			// every caller.
+			//
+			// The counter alone was not enough: the adapter is re-injected for every
+			// call, so a module-level counter restarted at 1 each time and the same
+			// mark landed twice across two calls in one command. The random tail is
+			// what survives that.
+			const mark = `${token}-${Math.random().toString(36).slice(2, 10)}`;
+			element.setAttribute("data-x-cli-control", mark);
+			return { x, y, selector: `[data-x-cli-control="${mark}"]`, mark };
 		}
 		sleepSync(80);
 	}

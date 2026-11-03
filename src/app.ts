@@ -2,10 +2,18 @@ import { readFile } from "node:fs/promises";
 import { ChromeManager, findChrome, openWithoutDebugging } from "./browser.ts";
 import { COMMANDS } from "./catalog.ts";
 import { CliError } from "./errors.ts";
+import { apply } from "./operations/actions.ts";
 import { authStatus, openLogin } from "./operations/auth.ts";
 import { getComment, listComments, scrollConversation } from "./operations/comments.ts";
+import { remove, removeMany } from "./operations/delete.ts";
+import { follow } from "./operations/follow.ts";
+import { readShelf, type Shelf } from "./operations/history.ts";
+import { findHot, readTrending } from "./operations/hot.ts";
 import { requireSignedIn } from "./operations/navigation.ts";
+import { publish } from "./operations/newpost.ts";
+import { readNotificationsPage } from "./operations/notify.ts";
 import { measurePace, pacePrompt } from "./operations/pace.ts";
+import { checkDraft, profileSection } from "./operations/section.ts";
 import { readSearch, readTimeline } from "./operations/sources.ts";
 import { getStatus } from "./operations/thread.ts";
 import { authorOf, type Input, isWrite, statusID, validateTarget, validateText } from "./operations/validate.ts";
@@ -38,11 +46,27 @@ export class App {
 	async execute(operation: string, raw: Input = {}, signal = AbortSignal.timeout(this.timeout)): Promise<unknown> {
 		const input = await this.readText(raw);
 		const id = statusID(input.status_id ?? input.resource);
+		// A new post has no target: it is not answering anything. Only the text is
+		// checked here, which is why it is separated from the two that do address a
+		// status.
+		if (operation === "post.create") input.text = validateText(input.text ?? input.text_file, operation);
 		if (operation === "comment.post" || operation === "comment.reply") {
 			input.text = validateText(input.text ?? input.text_file, operation);
 			validateTarget(operation, input);
 		}
-		if (["comment.list", "comment.get", "thread.get"].includes(operation)) validateTarget("comment.list", input);
+		if (
+			[
+				"comment.list",
+				"comment.get",
+				"post.get",
+				"post.like",
+				"post.bookmark",
+				"post.repost",
+				"comment.section",
+				"comment.check",
+			].includes(operation)
+		)
+			validateTarget("comment.list", input);
 		if (!COMMANDS.some((command) => command.id === operation))
 			throw new CliError("invalid_argument", `Unknown command: ${operation}`);
 		signal.throwIfAborted();
@@ -94,12 +118,86 @@ export class App {
 					});
 				case "comment.scroll":
 					return await scrollConversation(session, input.pixels ?? 900);
-				case "timeline.read":
+				case "feed.read":
 					return await readTimeline(session, input, signal);
-				case "thread.list":
+				case "search.keyword":
 					return await readSearch(session, input, signal);
-				case "thread.get":
+				case "post.get":
 					return await getStatus(session, id, signal, authorOf(input));
+				case "trend.read":
+					return await readTrending(session, input);
+				case "search.hot":
+					return await findHot(session, input, signal);
+				case "notice.read":
+					return await readNotificationsPage(session, input, signal);
+				case "user.follow": {
+					const handle = (input.handle ?? "").replace(/^@/, "").trim();
+					if (!/^[A-Za-z0-9_]{1,15}$/.test(handle))
+						throw new CliError("invalid_argument", "--handle must be a profile handle");
+					return await follow(session, input, handle, signal, { store: this.store });
+				}
+				case "comment.delete": {
+					const self = (await session.status()).account?.handle ?? null;
+					return await remove(session, input, id, signal, { store: this.store, self });
+				}
+				case "comment.delete-many": {
+					const self = (await session.status()).account?.handle ?? null;
+					const ids = (input.ids ?? "")
+						.split(",")
+						.map((entry) => statusID(entry))
+						.filter((entry): entry is string => !!entry);
+					if (!ids.length) throw new CliError("invalid_argument", "--ids needs at least one status id");
+					return await removeMany(session, input, ids, signal, { store: this.store, self });
+				}
+				case "saved.bookmarks":
+					return await readShelf(session, input, "bookmarks", signal);
+				case "saved.likes":
+					return await readShelf(session, input, "likes" as Shelf, signal);
+				case "post.create":
+					return await publish(input, signal, {
+						store: this.store,
+						chrome: this.chrome,
+						timeout: this.timeout,
+						progress: this.options.progress,
+					});
+				case "post.like":
+				case "post.bookmark":
+				case "post.repost":
+					return await apply(session, operation.slice(5) as "like" | "bookmark" | "repost", input, id, signal, {
+						store: this.store,
+					});
+				case "comment.section": {
+					const listed = await listComments(session, input, id, signal);
+					return {
+						status_id: id,
+						scope: listed.scope,
+						complete: listed.complete,
+						scrolls: listed.scrolls,
+						profile: profileSection(listed.items),
+						limits: [
+							...listed.limits,
+							"A profile of the loaded window, not of the conversation: X chose which replies to show and in what order.",
+							"`led` sorts the loaded replies by likes. That is not the page's own order and not a ranking of the section.",
+						],
+					};
+				}
+				case "comment.check": {
+					const listed = await listComments(session, input, id, signal);
+					const profile = profileSection(listed.items);
+					return {
+						status_id: id,
+						scope: listed.scope,
+						complete: listed.complete,
+						sampled: listed.items.length,
+						section: profile,
+						check: checkDraft(input.draft ?? "", profile),
+						limits: [
+							"Measured against the replies the page rendered, which is a window rather than a sample.",
+							"A report, not a gate: passing does not make a reply good, and failing does not make it bad.",
+							"This says nothing about whether the facts in the draft are right.",
+						],
+					};
+				}
 				default:
 					throw new CliError("invalid_argument", `Unknown command: ${operation}`);
 			}

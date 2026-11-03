@@ -72,7 +72,7 @@ test("isolated Chrome: conversation reads, the reply guard and receipts", {
 	});
 
 	await t.test("the timeline excludes promoted posts and says how many", async () => {
-		const result = (await app.execute("timeline.read", { limit: 10 }, signal)) as {
+		const result = (await app.execute("feed.read", { limit: 10 }, signal)) as {
 			source: string;
 			items: { id: string }[];
 			complete: boolean;
@@ -91,8 +91,8 @@ test("isolated Chrome: conversation reads, the reply guard and receipts", {
 		);
 	});
 
-	await t.test("a search reads the latest tab and returns the same shape", async () => {
-		const result = (await app.execute("thread.list", { query: "AI agent", limit: 10 }, signal)) as {
+	await t.test("a keyword search reads the latest tab and returns the same shape", async () => {
+		const result = (await app.execute("search.keyword", { query: "AI agent", limit: 10 }, signal)) as {
 			source: string;
 			query: string;
 			items: { id: string }[];
@@ -104,8 +104,8 @@ test("isolated Chrome: conversation reads, the reply guard and receipts", {
 		assert.equal(new URL(String(witness?.tab.url())).searchParams.get("f"), "live", "the live tab is what was opened");
 	});
 
-	await t.test("thread get returns the status itself, not its replies", async () => {
-		const result = (await app.execute("thread.get", { status_id: "1001" }, signal)) as {
+	await t.test("post get returns the status itself, not its replies", async () => {
+		const result = (await app.execute("post.get", { status_id: "1001" }, signal)) as {
 			item: { id: string; text: string } | null;
 			limits: string[];
 		};

@@ -1,12 +1,12 @@
 ---
 name: x
-description: Operate X (Twitter) from the command line — read a conversation, post a reply, and check what was actually delivered. Use this whenever the user asks to read X replies, reply to a tweet, check whether a reply went out, or sign in to X for automation. Also use it when the user says 看看这条推特的评论, 回复这条推, 发个回复, 查一下有没有发出去, or refers to X or Twitter by name in any language even without mentioning a CLI.
+description: Operate X (Twitter) through the local x-cli — read your timeline, the trending board, a keyword search, or one conversation; like, bookmark and repost; and write a reply that lands. Use this whenever the task involves X or Twitter at all: reading what people are saying under a post, finding posts worth answering, replying to a tweet or to a reply, checking whether a reply actually went out, or signing in for the first time. Also use it when the user says 看看这条推的评论, 找点热帖, 回复这条推, 发个回复, 查一下发出去没有, 我的收藏在哪, or names X or Twitter in any language without mentioning a CLI.
 allowed-tools: Bash(x-cli:*) Bash(node dist/cli.js:*)
 ---
 
-# X 评论与回复
+# X 上的读与回
 
-`x-cli` 是本地能力工具。你负责理解、判断和调度；它负责操作页面并留下回执。
+`x-cli` 负责操作页面、留下证据、管住写入。**判断不归它**：读什么、回谁、说什么，都是你的。这个分工是故意的 —— 如果工具替你挑帖、替你写正文，事后没人能问它「为什么选这条」。
 
 先把工具装好：
 
@@ -14,9 +14,11 @@ allowed-tools: Bash(x-cli:*) Bash(node dist/cli.js:*)
 x-cli --version || (cd <repo> && pnpm install --ignore-scripts && pnpm build)
 ```
 
-`x-cli schema` 是命令和参数的唯一来源。下面没写的以它和实际返回为准。
+`x-cli schema` 是命令和参数的唯一来源。这里没写的，以它和实际返回为准。
 
-## 每次开工前先确认登录
+**注意 schema 里的 id 和实际输入不一样**：`schema` 报 `comment.post`，真正敲的是 `x-cli comment post`。点号是文档里的写法，空格是命令行的写法。`x-cli comment.post` 会报 unknown command。
+
+## 开工前
 
 ```bash
 x-cli auth status
@@ -24,53 +26,73 @@ x-cli auth status
 
 | 返回 | 怎么办 |
 | --- | --- |
-| `signed_in: true` | 直接用，`account.handle` 就是当前账号 |
+| `signed_in: true` | 直接用，`account.handle` 是当前账号 |
 | `login_required: true` | 跑 `x-cli auth login`，让主人在窗口里登录 |
-| `verification_required: true` | 要人验证，跑不了。让主人处理完再 `auth status` |
+| `verification_required: true` | 要人验证，跑不了。让主人处理完再查 |
 
-**Google 登录会被拒**，页面显示「此浏览器或应用可能不安全」。这不是账号问题，是调试端口。用 `x-cli auth login --manual`：它关掉自动化浏览器，用同一个 profile 开一个不带调试端口的窗口，等主人关窗口后把登录态读回来。
+**Google 登录会被拒**，页面写「此浏览器或应用可能不安全」。那是调试端口被识破，不是账号问题。用 `x-cli auth login --manual`：它关掉自动化浏览器，用同一个 profile 开一个**不带调试端口**的窗口，等主人关窗口后把登录态读回来。
 
-## 先找候选
+## 三条找内容的路径，别混用
 
-不知道从哪条推开始时，先拉一批：
-
-```bash
-x-cli timeline read --limit 20 --scrolls 2      # 时间线
-x-cli thread list --query "AI agent" --limit 20 # 话题/搜索，走 Latest
-x-cli thread get --status <url-or-id>           # 读某一条本身，不含回复
-```
-
-三条命令返回同一种条目：`id`、`handle`、`name`、`text`、`at`、`likes`、`replies`、`retweets`、`mine`、`promoted`。
-
-- 广告已从 `items` 里排除，排除了几条写在 `limits` 里。
-- `items[].id` 直接能当 `comment post --status` 用。
-- 一样是窗口：`scope: "loaded_dom"`、`complete: false`。`--scrolls` 加滚动。
-
-**挑哪条、说什么，是你的判断，工具不做。** 没有「自动挑一条热帖并评论」的命令，也不该去找。
-
-## 节奏
-
-一条一条来。读完一条、想清楚、再写下一条。
-
-先确认这条在说什么（读正文，必要时读它下面的评论），再决定回不回、回什么。**没有值得说的话就不发**，这是常态不是失职。
-
-不要为了「多发几条」去压缩思考时间。工具不提供随机间隔或拟人节奏的参数 —— 那是在让平台看不出你在做什么，不是在帮你写得更好。
-
-## 读评论
+它们回答的是三个不同的问题，混在一起会答错。
 
 ```bash
-x-cli comment list --status <url-or-id> --limit 20 --scrolls 2
+x-cli feed read --limit 20 --scrolls 2              # 1. 我的推荐流里现在有什么
+x-cli trend read --limit 20                          # 2. 全网在聊什么（不用我先想到词）
+x-cli search keyword --query "AI agent" --limit 20   # 3. 我知道要找什么
+x-cli search hot --query "AI agent" --language zh --min-likes 500   # 3b. 这个词下最热的帖
 ```
 
-- `--status` 吃 URL 也吃纯数字 id。
-- `--scrolls` 是额外滚动次数，每滚一次多加载一批回复。默认 0，只拿到首屏。
-- `scope: "loaded_dom"`、`complete: false` 是真的：这是页面已渲染的窗口，不是全部回复。**`items` 为空只说明没加载到，不说明没人回复。**
-- `depth: 1` 是被画在别人下面的回复，`0` 是顶层。
-- `reply_to.id` 恒为 `null`，因为 X 的「Replying to」行链的是主页不是推文。要回复谁，用 `items[].id`。
+| 想知道 | 用 | 返回什么 |
+| --- | --- | --- |
+| 我关注的人/算法推给我什么 | `feed read` | 帖子 |
+| 现在什么话题在涨 | `trend read` | **话题**，不是帖子 |
+| 关键词下有什么 | `search keyword` | 帖子，最新优先 |
+| 关键词下哪几条被讨论得最多 | `search hot` | 帖子 + 完整互动数，按 X 的 Top 排 |
 
-想发回复之前，先读一遍那段的语气和长度，再写。
+`trend read` 返回的是话题（如 `Sports · Trending | Draymond`）。要读话题下面的帖子，再把话题丢给 `search keyword` —— 这一步不能省，话题不是帖子。
 
-## 发回复
+`search hot` 会拼 X 自己的运算符（`lang:` `min_faves:` `min_replies:` `since:`），排序是 X 的 Top 标签给的，不是我重排的。
+
+所有读取都返回同一种条目：`id`、`handle`、`name`、`text`、`at`、`likes`、`replies`、`retweets`、`promoted`、`liked`、`bookmarked`。`items[].id` 直接能当 `comment post --status` 用。
+
+读到的永远是窗口：`scope: "loaded_dom"`、`complete: false`。`--scrolls` 多加载几屏。**`items` 为空只说明没加载到，不说明没有。**
+
+## 挑一条之前先看它是不是值得回
+
+`search hot` 给的互动数就是用来做这个判断的：
+
+- **likes 高但 replies 少** → 没人接得住，你的回复容易是第一条，容易被看到，但也容易被作者判定为灌水。
+- **replies 已经很多** → 你的回复会沉底。除非你能说出别人没说的。
+- **bookmarks 远高于 likes** → 大家觉得有用但没什么情绪，写「有共鸣」会空。
+
+这些都不是规则，是参照。真正的判断还是读完再说。
+
+## 读一个区，再写
+
+```bash
+x-cli comment section --status <id> --scrolls 3
+```
+
+它量这个评论区：回复长度中位数、多少人提问、拿到赞的回复长什么样、多少条是空泛吹捧。
+
+拿到之后你会知道「这里的正常回复长什么样」。**这不是让你写得像，是让你知道写多长、写多具体才不算突兀。**
+
+写完先自己过一遍：
+
+```bash
+x-cli comment check --status <id> --draft "…"
+```
+
+| `verdict` | 意思 | 该做什么 |
+| --- | --- | --- |
+| `has-a-point` | 有具体指认、有第一人称立场、或有个转折 | 可以发 |
+| `flat` | 没具体的东西，也没立场 | 补一句只有读过这条才说得出的 |
+| `generic-praise` | 大部分是「太牛了」「学到了」「很有价值」这类放到哪条都成立的话 | 重写。这种话对作者和读者都是噪音 |
+
+`check` 是报告不是闸门，它不会拦你。**过了它也不等于写得好** —— 它只测「像不像空话」，测不了观点对不对、有没有编造。那些你自己核。
+
+## 发
 
 ```bash
 # 回整条推
@@ -80,46 +102,85 @@ x-cli comment post --status <id> --text "…" --request-id reply-<id>-01
 x-cli comment reply --status <id> --comment-id <reply-id> --text "…" --request-id reply-<id>-02
 ```
 
-**`--request-id` 必须给，而且每次新的发送用一个新 id。**
-
-写之前先 `--dry-run` 检查参数对不对，它不会开浏览器：
+**`--request-id` 必须给，每次新的发送用新的 id。** 先 `--dry-run` 检查参数（不开浏览器）：
 
 ```bash
 x-cli comment post --status 123 --text "…" --request-id t-1 --dry-run
 ```
 
-### 看到什么结果是成功
+### 结果怎么读
 
 | 返回 | 意思 |
 | --- | --- |
-| `confirmed: true` + `result.evidence` | 发出去了。`toast` 是平台自己弹的成功提示，`new_row` 是新行，`modal_closed` 是弹窗关掉（最弱的证据） |
+| `confirmed: true` + `result.evidence` | 发出去了。`toast` 是平台的成功提示；`new_row` 是新行；`modal_closed` 最弱 |
 | `replayed: true` | 这个 request id 之前就成功了，没有重发 |
 | `delivery_uncertain` | **按了按钮但页面没给证据。可能已经发出去。** |
-| `idempotency_conflict` | 同一个 request id 配了不同的文字 |
-| `identity_mismatch` | 弹窗不是回复模式，或者回的账号不对。**什么都没打进去。** |
-| `draft_conflict` | 输入框里有别人（或上次）留下的草稿，被保留了 |
+| `idempotency_conflict` | 同一个 request id 配了不同文字 |
+| `identity_mismatch` | 弹窗不是回复模式，或回的账号不对。**什么都没打进去** |
+| `draft_conflict` | 输入框里有别人留下的草稿，被保留了 |
+| `needs_confirmation: true` | 半小时内发得有点多，停下来问。看过之后加 `--confirm` 继续 |
 
-### `delivery_uncertain` 怎么处理
+### `delivery_uncertain` 绝不自动重发
 
-**绝不自动重发。** 它可能已经出现在时间线上，再发就是两条。
+它可能已经出现在时间线上，再发就是两条。
 
-1. 先确认页面没有登录/验证遮罩（有遮罩时读到的页面是旧的）。
-2. `x-cli comment list --status <id>`，看你的文字在不在。
-3. `x-cli receipt get <request-id>` 看回执停在哪一步（`dispatching` 就是按了按钮）。
-4. 真的没发出去，才用一个**新的** request id 重来，并且告诉主人这是新的一次发送。
+1. 先确认页面没有登录/验证遮罩（有遮罩时读到的是旧页面）。
+2. `x-cli comment list --status <id>` 看你的文字在不在。窗口是加载出来的，**没看到不等于没发出去**。
+3. `x-cli receipt get <request-id>` 看回执停在哪。
+4. 真的没发出去，才用**新的** request id 重来，并告诉主人这是新的一次。
 
-## 怎么说话
+**两个容易误读的地方（都有人踩过）：**
 
-- 先说结论，再说依据。看见了什么说什么，没看见就说没看见。
-- 「读了 9 条回复」「这条发了，平台弹了成功提示」比「操作已完成」有用。
-- 失败比成功重要。发了没成，直接说没成，别用「应该没问题」。
-- 报数字带上下文：`9 条里 3 条在吵架` 比 `评论呈现争议性` 强。
+- `history list` 只记**确认成功**的发送。一条 `delivery_uncertain` 的回复**不会**出现在里面。所以「历史里没有」不能当作没发出去的证据。
+- 回执停在 `dispatching` 有两种可能：还在确认中，或者就是那次 uncertain。光看状态分不出来，要看 `uncertainty_reason` 和 `updated_at`。
+- 回执里的 `tweet_id` 可能指向一个已被删除的帖子，打开会 404。这不代表回执错了，只代表目标没了。
+
+找不到是哪一条时，直接问主人要链接、id 或那次用的 request id。**不要从回执里挑一条时间最近的当成他说的那条。**
+
+## 点赞、收藏、转发
+
+```bash
+x-cli post like     --status <id> --value true
+x-cli post bookmark --status <id> --value true
+x-cli post repost   --status <id> --value true
+```
+
+`--value false` 是取消。状态从页面的 test id 读（`unlike` / `removeBookmark` / `unretweet` 表示已经做过），不看数字 —— 数字是全网总数，会自己动。
+
+同一个 request id 重放不会把状态翻回去；按了但页面没变是 `delivery_uncertain`，不会按第二次。
+
+**注意**：X 的自动化规则禁止**自动**点赞。这些命令是「你本人点一下」的等价物，不是让你批量刷。真实用户明确这么说的时候才用，别自己找帖子点。
+
+## 回看自己存过的东西
+
+```bash
+x-cli saved bookmarks --limit 30 --scrolls 2
+x-cli saved likes --limit 30
+```
+
+每条带 `liked` / `bookmarked` 的当前状态，所以列表里可能有一条你已经取消过的。用 `id` 可以：
+
+- 取消：`post bookmark --value false`
+- 现在有话说：`comment post --status <id>`
+
+收藏了不等于读过。这个命令的意义是「三周前存的东西，现在回头看看有没有能用的」。
+
+## 这轮怎么说话
+
+一条一条来。读完一条、想清楚、再写下一条。
+
+先确认这条在说什么（读正文，必要时读它下面的回复），再决定回不回、回什么。**没有值得说的话就不发**，这是常态不是失职，说出来比硬写一条强。
+
+不要为了「多发几条」压缩思考时间。工具不提供随机间隔或拟人节奏的参数 —— 那是在让平台看不出你在做什么，不是在帮你写得更好。
 
 ## 硬规则
 
-- **用稳定 id 定位，不用昵称。** 昵称会改，handle 也会改，数字 id 不会。
-- **不编造看过的内容。** `items` 是什么就说什么，没滚到的地方说没滚到。
-- **公开回复是发给所有人的。** 发之前自己读一遍：是不是在回答那条推，有没有在编经历，像不像模板。
-- **`identity_mismatch` 是保护不是故障。** 它拦住了「把回复变成公开发帖」和「回错人」。
+- **用稳定 id 定位，不用昵称。** 昵称和 handle 都会改，数字 id 不会。
+- **不编造读过的内容。** `items` 是什么就说什么，没滚到的地方说没滚到。没读过的帖子不要说「我看过」。
+- **公开回复是发给所有人的。** 发之前读一遍：是不是在回答这条，有没有在编经历，像不像模板。
+- **`identity_mismatch` 是保护不是故障。** 它拦住「把回复变成公开发帖」和「回错人」。
+- **不批量操作陌生人。** X 明确禁止搜到人就自动回复、自动点赞、自动关注。工具没有这类命令，也不该手写循环绕过。
+- **自动化身份要声明。** 用这个账号做自动化时，账号简介里应说明这一点和运营者。这不是建议，是 X 开发者指南的要求。
 - 别为了让命令成功去放宽检查。真的过不去，报告卡在哪。
-- 私信、点赞、关注、发新帖这些还没有。用户问到就直说没做。
+
+还没做的：私信、通知、发新帖、关注、Lists。用户问起就直说没有。

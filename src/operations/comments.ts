@@ -26,6 +26,11 @@ export interface TweetRow {
 	// Present on every row the adapter returns; the flag is what keeps a promoted
 	// post out of a list a caller is choosing a reply target from.
 	promoted?: boolean;
+	liked?: boolean;
+	bookmarked?: boolean;
+	kind?: "post" | "repost" | "reply";
+	pinned?: boolean;
+	author_link?: string | null;
 }
 
 export interface ListResult {

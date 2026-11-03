@@ -106,13 +106,22 @@ export interface ArmArgs {
 	// dialog is answering that tweet and not a neighbour.
 	target_text: string | null;
 	target_handle: string | null;
+	// "reply" (default) or "post". Decides which composer this command expects.
+	mode?: "reply" | "post";
 }
 
 // Reads the composer before typing, so a draft left by the owner is preserved
 // rather than overwritten.
-export function prepareWrite(args: ArmArgs): { selector: string; already: false } {
+// `mode` says which composer this is meant to be. A reply must show the quoted
+// tweet it answers; a new post must show none — the same check both ways, because
+// the two composers are the same component and the difference is exactly whether
+// a tweet is quoted.
+export function prepareWrite(args: ArmArgs & { mode?: "reply" | "post" }): { selector: string; already: false } {
 	const { editor, quoted } = composer();
-	if (!quoted) fail("identity_mismatch", "The composer is not in reply mode", "It would post to the timeline.");
+	if (args.mode !== "post" && !quoted)
+		fail("identity_mismatch", "The composer is not in reply mode", "It would post to the timeline.");
+	if (args.mode === "post" && quoted)
+		fail("identity_mismatch", "The composer is in reply mode", "This would answer a tweet instead of posting.");
 	if (editorText(editor)) fail("draft_conflict", "The composer already contains a draft", "The draft is preserved.");
 	editor.setAttribute("data-x-cli-editor", args.token);
 	window.__xCLI = {
@@ -176,11 +185,17 @@ export function armWrite(args: ArmArgs): Point {
 	const check = () => {
 		if (!state.editor.isConnected || !matches(state.editor, args.text))
 			fail("draft_conflict", "The composer changed before posting");
-		// The quoted tweet is what makes this a reply. Losing it between typing and
-		// pressing turns a reply into a public post.
+		// In reply mode the quoted tweet is what makes it a reply, and losing it
+		// between typing and pressing turns a reply into a public post. In post mode
+		// a quote appearing would mean the opposite: the post would land as an
+		// answer to someone.
 		const { quoted } = composer();
-		if (!quoted) fail("identity_mismatch", "The composer is no longer in reply mode");
-		if (!quotedMatches(quoted, args)) fail("identity_mismatch", "The composer answers a different tweet");
+		if (args.mode === "post") {
+			if (quoted) fail("identity_mismatch", "The composer became a reply");
+		} else {
+			if (!quoted) fail("identity_mismatch", "The composer is no longer in reply mode");
+			if (!quotedMatches(quoted, args)) fail("identity_mismatch", "The composer answers a different tweet");
+		}
 	};
 	check();
 	const dialog = state.editor.closest<HTMLElement>(DIALOG) ?? visibleDialog();
@@ -189,8 +204,9 @@ export function armWrite(args: ArmArgs): Point {
 		buttons.filter((element) => !buttons.some((other) => other !== element && element.contains(other))),
 		"post control",
 	);
-	installGuard(button, args.token, check, state);
-	return point(button, args.token);
+	const aimed = point(button, args.token);
+	installGuard(button, aimed.mark ?? args.token, check, state);
+	return aimed;
 }
 
 // The press is intercepted in the capture phase. If any of the command's checks

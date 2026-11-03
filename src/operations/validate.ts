@@ -21,13 +21,32 @@ export interface Input {
 	manual?: boolean;
 	// Search text for thread.list.
 	query?: string;
+	// Comma-separated status ids for a batch delete.
+	ids?: string;
+	// Profile handle for follow/unfollow.
+	handle?: string;
+	language?: string;
+	min_likes?: number;
+	min_replies?: number;
+	since?: string;
+	draft?: string;
 	// Answer to the posting-pace prompt. It does not grant anything by itself; it
 	// records that the caller was shown the count and chose to continue.
 	confirm?: boolean;
+	// Desired state for a toggle, defaulting to on.
+	value?: boolean;
 }
 
 export function isWrite(operation: string): boolean {
-	return ["comment.post", "comment.reply"].includes(operation);
+	return [
+		"comment.post",
+		"comment.reply",
+		"comment.delete",
+		"comment.delete-many",
+		"post.like",
+		"post.bookmark",
+		"post.repost",
+	].includes(operation);
 }
 
 // A status is addressed either by its URL or by its numeric id. Both resolve to

@@ -26,10 +26,15 @@ export const GROUPS: Record<string, string> = {
 	browser: "Start, stop and configure the dedicated Chrome",
 	auth: "Show the sign-in state and open the login window",
 	status: "Read the page and the signed-in account",
-	timeline: "Read the posts the home timeline has rendered",
-	thread: "Read one status by id, or a search's results",
+	notice: "Read who liked, replied to, or followed you",
+	user: "Follow and unfollow an account",
+	feed: "Read your own recommended timeline",
+	trend: "Read what X is trending on, with nothing searched for",
+	search: "Search a keyword and read the matching posts",
+	post: "Read one post, and like, bookmark or repost it",
 	comment: "Read a conversation and post a reply",
 	receipt: "Inspect a persisted write receipt",
+	saved: "Read back what this account bookmarked or liked",
 	history: "Read local operation facts",
 };
 
@@ -43,6 +48,14 @@ const statusFlag: Flag = {
 const text: Flag = { key: "text", name: "--text <text>", description: "Exact text to post", type: "string" };
 // Answering the pace prompt. Not a permission: the prompt is a pause to look at
 // a count, and this says the caller looked.
+// A toggle's desired state. Defaults to on for every post action.
+const toggle: Flag = {
+	key: "value",
+	name: "--value <boolean>",
+	description: "Desired state: true to set, false to undo",
+	type: "boolean-value",
+	default: true,
+};
 const paceConfirm: Flag = {
 	key: "confirm",
 	name: "--confirm",
@@ -140,7 +153,7 @@ export const COMMANDS: CommandSpec[] = [
 		effect: "read",
 	},
 	{
-		id: "timeline.read",
+		id: "feed.read",
 		description: "Read the posts the home timeline has rendered",
 		flags: [
 			{ key: "limit", name: "--limit <count>", description: "Maximum posts returned (default 20)", type: "number" },
@@ -154,20 +167,232 @@ export const COMMANDS: CommandSpec[] = [
 		],
 		effect: "navigation",
 		guidance:
-			"Promoted posts are excluded from items and counted in limits. scope=loaded_dom and complete=false mean this is what the page rendered, not the whole timeline. The ids returned are accepted directly by comment post --status. This command never selects a target or writes anything: reading and replying are separate, and the decision between them is the caller's.",
-		examples: ["x-cli timeline read --limit 20 --scrolls 2"],
+			"Promoted posts are excluded from items and counted in limits. scope=loaded_dom and complete=false mean this is what the page rendered, not the whole timeline. The ids returned are accepted directly by comment post --status. This command never selects a target or writes anything: reading and acting are separate, and the decision between them is the caller's.",
+		examples: ["x-cli feed read --limit 20 --scrolls 2"],
 	},
 	{
-		id: "thread.get",
+		id: "trend.read",
+		description: "Read what X is trending on",
+		flags: [
+			{
+				key: "limit",
+				name: "--limit <count>",
+				description: "Maximum topics to return (default 20)",
+				type: "number",
+			},
+		],
+		effect: "navigation",
+		guidance:
+			"The board as X orders and localizes it, with promoted entries excluded. An entry is a topic, not a post: pass the topic to `search keyword --query` to read the posts under it. This command does not translate, classify or re-rank what the board shows.",
+		examples: ["x-cli trend read --limit 20"],
+	},
+	{
+		id: "search.hot",
+		description: "Read the posts a topic is being discussed under, ranked by X's Top tab",
+		flags: [
+			{
+				key: "query",
+				name: "--query <text>",
+				description: "Topic; X's own search syntax is accepted",
+				type: "string",
+				required: true,
+			},
+			{
+				key: "language",
+				name: "--language <code>",
+				description: "Search language filter, e.g. zh or en",
+				type: "string",
+			},
+			{
+				key: "min_likes",
+				name: "--min-likes <count>",
+				description: "Only posts with at least this many likes",
+				type: "number",
+			},
+			{
+				key: "min_replies",
+				name: "--min-replies <count>",
+				description: "Only posts with at least this many replies",
+				type: "number",
+			},
+			{ key: "since", name: "--since <date>", description: "Only posts since YYYY-MM-DD", type: "string" },
+			{ key: "limit", name: "--limit <count>", description: "Maximum posts returned (default 10)", type: "number" },
+			{
+				key: "scrolls",
+				name: "--scrolls <count>",
+				description: "Additional scrolls to load more results",
+				type: "number",
+				default: 0,
+			},
+		],
+		effect: "navigation",
+		guidance:
+			"Composes X's own operators (lang:, min_faves:, min_replies:, since:) and reads the Top tab, so the ordering is the platform's rather than a re-ranking computed here. Each post carries replies / reposts / likes / bookmarks / views as the card states them; a count the page did not print is null, not zero. That engagement is what tells a busy conversation from an empty one — a well-liked post with no replies has nobody to answer. This command finds candidates and stops: choosing one and writing the reply stay with the caller.",
+		examples: ['x-cli search hot --query "AI agent" --language zh --min-likes 500 --limit 10'],
+	},
+	{
+		id: "notice.read",
+		description: "Read the notifications page",
+		flags: [
+			{ key: "limit", name: "--limit <count>", description: "Maximum entries returned (default 30)", type: "number" },
+			{
+				key: "scrolls",
+				name: "--scrolls <count>",
+				description: "Additional scrolls to load older entries",
+				type: "number",
+				default: 0,
+			},
+		],
+		effect: "navigation",
+		guidance:
+			"Each entry carries the kind (like / reply / follow / repost / mention / other), the actors' handles, the row's text and its time. Rows do not include the post id: the page links the actor, not the post, so which post a notification is about is only learnable by opening it. A row whose sentence matches no known kind is reported as other rather than guessed.",
+		examples: ["x-cli notice read --limit 30 --scrolls 2"],
+	},
+	{
+		id: "user.follow",
+		description: "Follow, or unfollow, one account",
+		flags: [
+			{
+				key: "handle",
+				name: "--handle <name>",
+				description: "Profile handle, with or without the @",
+				type: "string",
+				required: true,
+			},
+			{
+				key: "value",
+				name: "--value <boolean>",
+				description: "true to follow, false to unfollow",
+				type: "boolean-value",
+				default: true,
+			},
+		],
+		effect: "account_write",
+		guidance:
+			"The control is matched by the numeric id in its test id and by the handle in its aria-label, so a follow button for a suggested account in the sidebar cannot be pressed by mistake. A protected account answers with a confirmation dialog and the result reports pending rather than following. There is no batch follow: X's rules prohibit bulk or indiscriminate following.",
+		examples: ["x-cli user follow --handle someone", "x-cli user follow --handle someone --value false"],
+	},
+	{
+		id: "post.like",
+		description: "Like or unlike one post",
+		flags: [statusFlag, toggle],
+		effect: "account_write",
+		guidance:
+			"The post must be the one the tab has open; the page's own test id is the state, and a press that does not change it is delivery_uncertain rather than a second press. Reusing a confirmed --request-id replays the receipt instead of toggling back.",
+	},
+	{
+		id: "post.bookmark",
+		description: "Bookmark or unbookmark one post",
+		flags: [statusFlag, toggle],
+		effect: "account_write",
+		guidance: "Same contract as post like: state from the page, no automatic retry, confirmed request ids replay.",
+	},
+	{
+		id: "post.repost",
+		description: "Repost or undo a repost of one post",
+		flags: [statusFlag, toggle],
+		effect: "account_write",
+		guidance:
+			"A repost is a menu, and only the plain item is pressed; a menu offering only a quote is refused rather than opening a composer nobody wrote in.",
+	},
+	{
+		id: "comment.delete",
+		description: "Delete one of this account's own posts or replies",
+		flags: [
+			statusFlag,
+			{
+				key: "confirm",
+				name: "--confirm",
+				description: "Acknowledge that deleting cannot be undone",
+				type: "boolean",
+				default: false,
+			},
+		],
+		effect: "account_write",
+		guidance:
+			"Deletes one post and cannot be undone: the page asks for no confirmation, so --confirm is the only check there is. Ownership is proven from the post's author link, not from the menu appearing — a post by someone else has a more-menu too. The menu must offer exactly one delete item, and the confirmation dialog names nothing, so it is trusted only because it followed this press. The result is confirmed by the post leaving the page. Requires --request-id.",
+		examples: ["x-cli comment delete --status 1234567890 --confirm --request-id del-1234567890-01"],
+	},
+	{
+		id: "comment.delete-many",
+		description: "Delete several of this account's own posts by id",
+		flags: [
+			{
+				key: "ids",
+				name: "--ids <list>",
+				description: "Comma-separated status ids, from saved or search output",
+				type: "string",
+				required: true,
+			},
+			{ key: "limit", name: "--limit <count>", description: "Maximum posts to delete (default 20)", type: "number" },
+			{
+				key: "confirm",
+				name: "--confirm",
+				description: "Acknowledge that deleting cannot be undone",
+				type: "boolean",
+				default: false,
+			},
+		],
+		effect: "account_write",
+		guidance:
+			"Each id goes through the same proof as comment delete: the post must be on its page, its author link must be this account, the menu must offer one delete item, and the result is confirmed by the post leaving. A post owned by someone else is skipped and named, never deleted; any other failure stops the batch so the next press is not a guess. There is no undo, so a partial run is reported as partial. Requires --confirm and --request-id.",
+		examples: ["x-cli comment delete-many --ids 123,456,789 --confirm --request-id del-batch-01"],
+	},
+	{
+		id: "comment.section",
+		description: "Measure how a conversation replies, and what drew a reaction",
+		flags: [
+			statusFlag,
+			{
+				key: "scrolls",
+				name: "--scrolls <count>",
+				description: "Conversation scrolls to load replies",
+				type: "number",
+				default: 2,
+			},
+			{ key: "limit", name: "--limit <count>", description: "Replies to read", type: "number", default: 60 },
+		],
+		effect: "navigation",
+		guidance:
+			"Returns the section's reply-length quartiles, how many ask questions, which replies lead on likes, and a shape count of how many carry a point versus generic praise. `led` is the most-liked replies in the loaded window, not a ranking of the section. This describes the window X chose to show; it is not a sample, and it says so.",
+		examples: ["x-cli comment section --status 1234567890 --scrolls 3"],
+	},
+	{
+		id: "comment.check",
+		description: "Check a draft reply against the section it would join",
+		flags: [
+			statusFlag,
+			{
+				key: "draft",
+				name: "--draft <text>",
+				description: "The reply you are considering",
+				type: "string",
+				required: true,
+			},
+			{
+				key: "scrolls",
+				name: "--scrolls <count>",
+				description: "Conversation scrolls used to measure the section",
+				type: "number",
+				default: 2,
+			},
+		],
+		effect: "navigation",
+		guidance:
+			"Reads the section, then measures the draft against it: length band, whether it names anything specific, whether it speaks from the writer's own position, and how much of it is praise vocabulary that would fit any post. It is a report, not a gate — it never rewrites the text and never blocks a send. Passing it does not mean the reply is good, and failing it does not mean it is bad; it means the draft has the shape of the thing it warns about.",
+		examples: ['x-cli comment check --status 1234567890 --draft "…"'],
+	},
+	{
+		id: "post.get",
 		description: "Read one status by id or URL, without its replies",
 		flags: [statusFlag],
 		effect: "navigation",
 		guidance:
-			"Returns the status itself. Use comment list for the conversation under it. A deleted or protected status is not_found rather than an empty object.",
-		examples: ["x-cli thread get --status https://x.com/handle/status/1234567890"],
+			"Returns the post itself. Use comment list for the conversation under it. A deleted or protected post is not_found rather than an empty object.",
+		examples: ["x-cli post get --status https://x.com/handle/status/1234567890"],
 	},
 	{
-		id: "thread.list",
+		id: "search.keyword",
 		description: "Read the posts a search has rendered",
 		flags: [
 			{
@@ -188,8 +413,17 @@ export const COMMANDS: CommandSpec[] = [
 		],
 		effect: "navigation",
 		guidance:
-			"Uses the Latest tab: results in the order X served them, not by engagement. No results is an answer, not a failure; a rate limit is reported as unsupported_page. Same item shape as timeline read, and the same rule: this never chooses a target or posts.",
-		examples: ['x-cli thread list --query "AI agent" --limit 20'],
+			"Uses the Latest tab: results in the order X served them, not by engagement. No results is an answer, not a failure; a rate limit is reported as unsupported_page. Same item shape as feed read, and the same rule: this never chooses a target or posts.",
+		examples: ['x-cli search keyword --query "AI agent" --limit 20'],
+	},
+	{
+		id: "post.create",
+		description: "Publish a new post",
+		flags: [text, textFile, paceConfirm],
+		effect: "account_write",
+		guidance:
+			"Requires --text or --text-file and --request-id. The composer must be a new-post composer: a quoted tweet in it would mean this lands as a reply, and that is refused. Same delivery contract as a reply — a receipt before the press, a guard at press time, and delivery_uncertain when the page gives no evidence. A dry run does not open Chrome.",
+		examples: ['x-cli post create --text "…" --request-id post-01'],
 	},
 	{
 		id: "comment.list",
@@ -268,6 +502,42 @@ export const COMMANDS: CommandSpec[] = [
 			{ key: "pixels", name: "--pixels <pixels>", description: "Signed scroll distance", type: "number", default: 900 },
 		],
 		effect: "navigation",
+	},
+	{
+		id: "saved.bookmarks",
+		description: "Read the posts this account has bookmarked",
+		flags: [
+			{ key: "limit", name: "--limit <count>", description: "Maximum posts returned (default 20)", type: "number" },
+			{
+				key: "scrolls",
+				name: "--scrolls <count>",
+				description: "Additional scrolls to load older entries",
+				type: "number",
+				default: 0,
+			},
+		],
+		effect: "navigation",
+		guidance:
+			"Each item carries the card's current state (liked, bookmarked), so an entry can be one this account has since undone. Use the id with post bookmark --value false to remove it, or comment post to reply to it now. Reading this list is a bounded window: X loads older entries as it scrolls.",
+		examples: ["x-cli saved bookmarks --limit 30 --scrolls 2"],
+	},
+	{
+		id: "saved.likes",
+		description: "Read the posts this account has liked",
+		flags: [
+			{ key: "limit", name: "--limit <count>", description: "Maximum posts returned (default 20)", type: "number" },
+			{
+				key: "scrolls",
+				name: "--scrolls <count>",
+				description: "Additional scrolls to load older entries",
+				type: "number",
+				default: 0,
+			},
+		],
+		effect: "navigation",
+		guidance:
+			"Same shape as saved bookmarks. Use post like --value false with an item id to unlike it, or comment post to reply to something read before it was saved.",
+		examples: ["x-cli saved likes --limit 30"],
 	},
 	{
 		id: "receipt.get",
