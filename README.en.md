@@ -61,20 +61,15 @@ node dist/cli.js --version
 xx auth login
 ```
 
-Sign in yourself in the window that opens. **The tool never types a password.**
-The session lives in `~/.xx/chrome`, so it survives restarts.
-
-Signing in with Google is refused — the page says *"This browser or app may not
-be secure"*. That is the debugging port being detected, not an account problem.
-Use:
-
-```bash
-xx auth login --manual
-```
-
 It closes the automation browser, opens the same profile **without** the
-debugging port, waits until you close the window, and then reads the session
-back.
+debugging port, lets you sign in yourself, and reads the session back once you
+close the window. **The tool never types a password.** The session lives in
+`~/.xx/chrome`, so it survives restarts.
+
+That is the default because the other route fails: Google refuses a browser
+started with a debugging port and shows *"This browser or app may not be
+secure"*. `--manual false` skips the indirection — worth it only for an account
+that does not use Google.
 
 ### 3. Install the skill
 

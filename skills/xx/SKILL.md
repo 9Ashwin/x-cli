@@ -23,7 +23,7 @@ xx auth status
 | `login_required: true` | `xx auth login`，让主人在窗口里登录 |
 | `verification_required: true` | 要人验证，跑不了。让主人处理完再查 |
 
-Google 账号登录会被拒（「此浏览器或应用可能不安全」）。用 `xx auth login --manual`。详见 `references/setup.md`。
+`xx auth login` 默认用不带调试端口的窗口登录——Google 会拒绝自动化浏览器（「此浏览器或应用可能不安全」），所以默认就绕开它。别加 `--manual false`，除非账号不用 Google。详见 `references/setup.md`。
 
 `xx schema` 是命令和参数的唯一来源。**注意 schema 里的 id 和命令行输入不一样**：`schema` 报 `comment.post`，敲的是 `xx comment post`。
 

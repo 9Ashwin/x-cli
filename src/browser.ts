@@ -472,8 +472,8 @@ export class Session {
 		return wire.data as T;
 	}
 
-	async status(): Promise<Snapshot> {
-		return this.call<Snapshot>("status");
+	async status(includeText = false): Promise<Snapshot> {
+		return this.call<Snapshot>("status", includeText ? { include_text: true } : {});
 	}
 
 	async click(point: Point): Promise<void> {

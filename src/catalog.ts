@@ -124,18 +124,18 @@ export const COMMANDS: CommandSpec[] = [
 	},
 	{
 		id: "auth.login",
-		description: "Open X's login page in headed Chrome and wait for the owner to sign in",
+		description: "Sign in through the same profile with the debugging port off",
 		flags: [
 			{
 				key: "manual",
-				name: "--manual",
-				description: "Sign in through the same profile with the debugging port off",
-				type: "boolean",
+				name: "--manual <boolean>",
+				description: "Default true; pass false to sign in inside the automation browser",
+				type: "boolean-value",
 			},
 		],
 		effect: "navigation",
 		guidance:
-			'The tool never types credentials. Complete the form in Chrome; the dedicated profile keeps the session for every later command. Run auth status afterwards.\n\nSigning in with Google is refused in a browser started for automation and shows "this browser or app may not be secure". Use --manual for that: it closes the automation browser, opens the same profile without a debugging port, waits until you close it, and then reads the session back.',
+			'The tool never types credentials. Complete the form in Chrome; the dedicated profile keeps the session for every later command. Run auth status afterwards.\n\nThis closes the automation browser, opens the same profile without a debugging port, waits until you close the window, then reads the session back. That indirection is the default because the direct route fails: Google refuses a browser started with a debugging port and shows "this browser or app may not be secure", which is the most common reason a sign-in appears to do nothing. Pass --manual false only for an account that does not use Google and wants the shorter route.',
 	},
 	{
 		id: "auth.status",

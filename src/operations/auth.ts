@@ -7,12 +7,12 @@ import { CliError } from "../errors.ts";
 // The owned tab starts on about:blank, where every field is honestly null; that
 // said nothing about the sign-in. Reading X's own home page makes the answer
 // about the session rather than about the tab.
-export async function authStatus(session: Session) {
+export async function authStatus(session: Session, includeText = false) {
 	if (!session.tab.url().startsWith("http")) {
 		await session.tab.goto("https://x.com/home", { waitUntil: "domcontentloaded" });
 		await new Promise((resolve) => setTimeout(resolve, 1200));
 	}
-	const state = await session.status();
+	const state = await session.status(includeText);
 	return {
 		signed_in: !state.login_required && !state.verification_required,
 		login_required: state.login_required,
@@ -20,6 +20,11 @@ export async function authStatus(session: Session) {
 		account: state.account,
 		page_kind: state.page_kind,
 		url: state.url,
+		// `--include-text` was advertised in the catalog and implemented in the page
+		// adapter, but this function never asked the adapter for it, so the flag was
+		// accepted and silently dropped — and `emptyReason`, which reads the same
+		// field to tell a rate limit from an empty page, always got "".
+		...(includeText && state.visible_text ? { visible_text: state.visible_text } : {}),
 	};
 }
 
@@ -40,7 +45,7 @@ export async function openLogin(session: Session): Promise<unknown> {
 		// so the page says "this browser may not be secure" and there is nothing to
 		// fill in. Saying so here turns a dead end into the one command that works.
 		alternative:
-			"Signing in with Google is refused in a browser started for automation. Run `xx auth login --manual` instead: it opens the same profile without the debugging port.",
+			"`xx auth login` already does this: it opens the same profile without the debugging port, because Google refuses a browser started for automation.",
 	};
 }
 

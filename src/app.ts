@@ -92,7 +92,12 @@ export class App {
 		if (input.dry_run) return this.plan(operation, input, id);
 		const local = await this.local(operation, input, signal);
 		if (local !== undefined) return local;
-		if (operation === "auth.login" && input.manual) return this.manualLogin(signal);
+		// Signing in through the automation browser is the path that fails: Google
+		// refuses a browser with a debugging port, which is exactly how this one is
+		// started. `--manual` is the path that works, so it is the default; the
+		// in-automation window is now the opt-in, for an account that does not use
+		// Google and wants the shorter route.
+		if (operation === "auth.login" && input.manual !== false) return this.manualLogin(signal);
 
 		// A run of replies stops here and asks. This is a prompt, not a gate: it
 		// reads the local history, says how many were made and in what window, and
@@ -115,7 +120,7 @@ export class App {
 					return await openLogin(session);
 				case "auth.status":
 				case "status":
-					return await authStatus(session);
+					return await authStatus(session, input.include_text === true);
 			}
 			// Reads may run signed out so the caller learns what is wrong from the
 			// page rather than from a failed navigation; writes require a session.
