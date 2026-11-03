@@ -81,7 +81,10 @@ export async function listComments(
 
 	const rows = [...collected.values()];
 	const root = rows.find((row) => row.root) ?? rows[0] ?? null;
-	const replies = rows.filter((row) => row.id !== root?.id).slice(0, limit);
+	// Promoted replies ride in the same list as real ones. They are ads with their
+	// own like counts, and leaving them in made a section read as if its loudest
+	// agreement came from an advertiser.
+	const replies = rows.filter((row) => row.id !== root?.id && !row.promoted).slice(0, limit);
 	return {
 		status_id: id,
 		root,
