@@ -77,6 +77,19 @@ export function tabOf(value: string | undefined): Tab {
 	throw new CliError("invalid_argument", `--tab must be one of ${Object.keys(TABS).join(", ")}`);
 }
 
+// Whether the page that was opened is the topic that was asked for. A trending
+// entry is a word or a hashtag, and the search it opens repeats it as the query —
+// so the two agree when one contains the other after normalising case, spacing
+// and the leading "#". A story row opens a topic page with no query, which is
+// checked separately by the caller's title.
+export function matchesTopic(wanted: string, opened: string): boolean {
+	const normalise = (value: string) => value.toLowerCase().replace(/#/g, "").replace(/\s+/g, " ").trim();
+	const left = normalise(wanted);
+	const right = normalise(opened);
+	if (!left || !right) return true;
+	return left === right || left.includes(right) || right.includes(left);
+}
+
 export async function waitForBoard(session: Session, tab: Tab, signal: AbortSignal): Promise<TrendEntry[]> {
 	await session.tab.goto(TABS[tab], { waitUntil: "domcontentloaded" });
 	const state = await session.status();
@@ -140,7 +153,8 @@ export async function readTopic(session: Session, input: Input, signal: AbortSig
 			});
 		await waitForBoard(session, tab, signal);
 		const board = await session.call<TrendEntry[]>("trend.list", { tab });
-		title = board.find((entry) => entry.row_index === index)?.topic ?? null;
+		const wanted = board.find((entry) => entry.row_index === index) ?? null;
+		title = wanted?.topic ?? null;
 		const opened = await session.call<{ found: boolean }>("trend.open", { index });
 		if (!opened.found)
 			throw new CliError("not_found", "The board has no row at that index", {
@@ -161,6 +175,20 @@ export async function readTopic(session: Session, input: Input, signal: AbortSig
 			throw new CliError("not_found", "That row did not open", {
 				hint: "The board may not have finished loading. Read it again with trend read.",
 				details: { index, tab, url: session.tab.url() },
+			});
+		// The board reorders while it is open — X mixes in new topics, and its
+		// category labels switch with the region. So the index that was read a
+		// moment ago can point at a different row by the time the click lands, and
+		// the page reached is then the wrong topic reported under the right title.
+		// Whatever the row led to has to be checked against the row that was asked
+		// for; a mismatch is refused rather than returned.
+		const landedUrl = session.tab.url();
+		const searchTerm = /[?&]q=([^&]*)/.exec(landedUrl)?.[1];
+		const landedName = searchTerm ? decodeURIComponent(searchTerm.replace(/\+/g, " ")) : null;
+		if (wanted && landedName && wanted.topic && !matchesTopic(wanted.topic, landedName))
+			throw new CliError("identity_mismatch", "The board reordered; that index now opens a different topic", {
+				hint: "Read the board again with trend read and use a fresh row_index — indices are only good for the next call.",
+				details: { index, tab, expected: wanted.topic, opened: landedName },
 			});
 	}
 	const state = await session.status();

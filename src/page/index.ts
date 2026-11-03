@@ -130,9 +130,17 @@ function execute(operation: string, args: Args): unknown {
 					if (/Promoted|推广|广告/i.test(clean(row.textContent))) return null;
 					const rankText = /^\d{1,3}$/.test(leaves[0] ?? "") ? leaves[0] : null;
 					const meta =
+						// The category line is localized and its words vary: "Sports · Trending"
+						// in English, but "美国 的趋势" in Chinese — the region replaces the
+						// category noun and the word for "trending" changes shape. The row's
+						// category line is the one that carries the separator and no rank, so
+						// it is matched by shape, with the known words as a preference.
 						leaves.find(
-							(text) => text.includes("·") && /Trending|News|Sports|Entertainment|热门|新闻|体育|娱乐/i.test(text),
+							(text) =>
+								text.includes("·") &&
+								/Trending|News|Sports|Entertainment|热门|新闻|体育|娱乐|趋势|時事|トレンド/i.test(text),
 						) ??
+						leaves.find((text) => text !== rankText && !/^\d{1,3}$/.test(text) && text.length <= 12) ??
 						leaves.find((text) => text.includes("·")) ??
 						"";
 					const rest = leaves.filter((text) => text !== rankText && text !== meta);
